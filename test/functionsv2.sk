@@ -1,0 +1,75 @@
+effect TEST functionsv2:
+    trigger:
+        test()
+
+import:
+    java.util.HashMap
+
+local function test():
+    # -------------------------
+    # Supplier (no args, return)
+    # -------------------------
+    set {_supplier} to lambda: "test"
+    broadcast "supplier basic failed" if {_supplier}.get() is not "test"
+    set {_supplier2} to lambda: 2 + 3
+    broadcast "supplier expression failed" if {_supplier2}.get() is not 5
+    # -------------------------
+    # Function (arg, return)
+    # -------------------------
+    set {_function} to lambda {_x}: {_x} * 5
+    broadcast "function basic failed" if {_function}.apply(5) is not 25
+    set {_function2} to lambda {_x}: "%{_x}%_ok"
+    broadcast "function string failed" if {_function2}.apply("abc") is not "abc_ok"
+    # -------------------------
+    # Runnable (no args, no return)
+    # -------------------------
+    delete {-ran}
+    set {_runnable} to lambda:- set {-ran} to true
+    {_runnable}.run()
+    broadcast "runnable side-effect failed" if {-ran} is not true
+    # -------------------------
+    # Consumer (arg, no return)
+    # -------------------------
+    delete {-consumed}
+    set {_consumer} to lambda {_x}:- set {-consumed} to {_x}
+    {_consumer}.accept(42)
+    broadcast "consumer side-effect failed" if {-consumed} is not 42
+    # -------------------------
+    # Repeated invocation stability
+    # -------------------------
+    set {-sum} to 0
+    set {_adder} to lambda {_x}:- add {_x} to {-sum}
+    {_adder}.accept(1)
+    {_adder}.accept(2)
+    {_adder}.accept(3)
+    broadcast "consumer repeat failed" if {-sum} is not 6
+    # -------------------------
+    # Mixed usage sanity
+    # -------------------------
+    set {_mix} to lambda {_x}: {_x} + 1
+    set {_val} to {_mix}.apply(9)
+    broadcast "mixed usage failed" if {_val} is not 10
+    
+    # -------------------------
+    # BiFunction (2 args, return)
+    # -------------------------
+    set {_bifunc} to lambda {_a}, {_b}: {_a} + {_b}
+    broadcast "bifunction failed" if {_bifunc}.apply(3, 4) is not 7
+    # -------------------------
+    # BiConsumer (2 args, no return)
+    # -------------------------
+    delete {-pair::*}
+    set {_bicons} to lambda {_a}, {_b}:- set {-pair::*} to {_a}, {_b}
+    {_bicons}.accept("x", "y")
+    broadcast "biconsumer failed" if {-pair::1} is not "x"
+    broadcast "biconsumer failed" if {-pair::2} is not "y"
+    
+    # variable list
+    set {-varl} to 0
+    set {_map} to new HashMap()
+    {_map}.put(1, 1)
+    {_map}.put(2, 3)
+    {_map}.put(3, 2)
+    set {_adder} to lambda {_arg}:- {_arg}.values().stream().forEach(lambda {_x}:- add {_x} to {-varl})
+    {_adder}.accept({_map})
+    broadcast "varlist failed" if {-varl} is not 6
