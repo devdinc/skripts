@@ -1,0 +1,181 @@
+# =============================================================================
+# FLUENT ROUTINES INTEGRATION (Paper / Skript)
+# =============================================================================
+#
+# This script exposes the devdinc/routines API to Skript via skript-reflect,
+# enabling fluent, composable, and contextual routine execution.
+#
+# It allows scheduling and chaining of Java-compatible functional interfaces
+# (Runnable, Supplier, Function, Consumer) with explicit execution contexts
+# (virtual, async, global).
+#
+# -----------------------------------------------------------------------------
+# REQUIREMENTS
+# -----------------------------------------------------------------------------
+#
+# - Paper server
+# - Skript
+# - skript-reflect
+# - Skcrew (for lambda support)
+#
+# The following MUST be present in skript-reflect's directory:
+#   - routines-core.jar
+#   - routines-paper.jar
+
+# The following MUST be installed as a skript:
+#   - devdinc/skript/functionsv2.sk
+#
+# -----------------------------------------------------------------------------
+# INITIALIZATION
+# -----------------------------------------------------------------------------
+#
+# On load, this script:
+#   - Instantiates a singleton RoutineService
+#   - Registers Paper execution contexts:
+#       * virtual  → lightweight, non-thread-affine execution
+#       * async    → Paper async scheduler
+#       * global   → main server thread
+#
+# These are stored in global variables for reuse.
+#
+# -----------------------------------------------------------------------------
+# PROVIDED EXPRESSIONS
+# -----------------------------------------------------------------------------
+#
+# 1) instant now
+#    - Returns java.time.Instant.now()
+#
+# 2) routine service
+#    - Returns the singleton RoutineService instance
+#
+# 3) <virtual|async|global> context
+#    - Returns a PaperContext for routine execution
+#
+# 4) fluent routine [at <time>] [with <context>] [<operations>]
+#    - Builds a fluent routine chain
+#
+# 5) wait for fluent routine ...
+#    - Same as above, but calls join() on the routine
+#
+# -----------------------------------------------------------------------------
+# FLUENT ROUTINE SEMANTICS
+# -----------------------------------------------------------------------------
+#
+# - "at <time>":
+#     * Accepts Instant or Date
+#     * Date values are converted to Instant
+#     * Defaults to Instant.now()
+#
+# - "with <context>":
+#     * Must be a PaperContext
+#     * Defaults to async context
+#
+# - Operations are processed left-to-right and may be:
+#     * Supplier  → supply(value)
+#     * Function  → apply(input)
+#     * Runnable  → run()
+#     * Consumer  → accept(value)
+#
+# Each operation mutates the routine chain.
+#
+# -----------------------------------------------------------------------------
+# ⚠️ CONCURRENCY AND SAFETY WARNINGS
+# -----------------------------------------------------------------------------
+#
+# - `wait for fluent routine` calls join()
+# - join() BLOCKS the current execution thread
+#
+# ABSOLUTELY DO NOT USE join()/wait for WITH:
+#   - region context
+#   - entity context
+#   - global (main-thread) context
+#
+# Doing so can:
+#   - Deadlock the server
+#   - Freeze the main thread
+#   - Corrupt scheduler state
+#
+# join() should ONLY be used in isolated async flows where blocking
+# is explicitly safe and intentional.
+#
+# -----------------------------------------------------------------------------
+# DESIGN INTENT
+# -----------------------------------------------------------------------------
+#
+# This script is intended for:
+#   - Advanced users
+#   - Controlled async pipelines
+#   - Declarative task orchestration
+#
+# It is NOT intended as a beginner-friendly scheduling abstraction.
+#
+# If you do not fully understand Paper threading rules,
+# do not modify or extend this file.
+#
+# =============================================================================
+
+
+import:
+    github.devdinc.routines.RoutineService
+    github.devdinc.routines.config.impl.PaperRoutineConfiguration
+    github.devdinc.routines.PaperContext
+    ch.njol.skript.Skript
+
+    java.lang.Runnable
+    java.util.function.Supplier
+    java.util.function.Consumer
+    java.util.function.Function
+    
+    java.time.Instant
+    java.util.Date
+
+on load:
+    set {-routines::service} to new RoutineService(PaperRoutineConfiguration.paperRoutineConfiguration(Skript.getInstance()))
+    set {-routines::context.virtual} to PaperContext.virtual()
+    set {-routines::context.async} to PaperContext.async()
+    set {-routines::context.global} to PaperContext.global()
+    
+expression instant now:
+    get:
+        return Instant.now()
+        
+expression routine[ service]:
+    get:
+        return {-routines::service}
+
+expression:
+    patterns:
+        fluent routine[ at %-object%][ with %-object%][ %-objects%]
+        wait for fluent routine[ at %-object%][ with %-object%][ %-objects%]
+    get:
+        set {_expr-1} to expr-1 if expr-1 is set else instant now
+        if {_expr-1} is instance of Date: # "at 5 seconds" later works
+            set {_expr-1} to {_expr-1}.toInstant()
+        set {_expr-2} to expr-2 if expr-2 is set else async context
+        {_expr-1} is instance of Instant
+        {_expr-2} is instance of PaperContext
+        set {_r} to routine.fluent({_expr-1}).context({_expr-2})
+        if expr-3 is set:
+            set {_l::*} to elements from 1 to 999 of expr-3
+            loop {_l::*}:
+                set {_expr-3} to loop-value
+                {_expr-3} is instance of Supplier:
+                    set {_r} to {_r}.supply({_expr-3})
+                {_expr-3} is instance of Function:
+                    set {_r} to {_r}.apply({_expr-3})
+                {_expr-3} is instance of Runnable:
+                    set {_r} to {_r}.run({_expr-3})
+                {_expr-3} is instance of Consumer:
+                    set {_r} to {_r}.accept({_expr-3})
+        if pattern is 2:
+            set {_r} to {_r}.join()
+        return {_r}
+        
+expression (1:virtual|2:async|3:global) context:
+    get:
+        if mark is 1:
+            return {-routines::context.virtual}
+        if mark is 2:
+            return {-routines::context.async}
+        if mark is 3:
+            return {-routines::context.global}
