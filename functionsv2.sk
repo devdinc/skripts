@@ -119,95 +119,76 @@
 #
 # =============================================================================
 
-
 import:
     java.util.function.Supplier
     java.util.function.Function
     java.util.function.Consumer
-    java.lang.Runnable
-    ch.njol.skript.lang.Variable
     java.util.function.BiFunction
     java.util.function.BiConsumer
+    java.lang.Runnable
 
 expression:
     patterns:
         lambda[ %-objects%]\:(1: |2:- )<(.+)>
-    parse: 
-        set {_HqZr::_str} to "%expr-1%"
-        if {_HqZr::_str} is "<none>":
-            set {_HqZr::_str} to ""
-        set {_HqZr::expr1} to {_HqZr::_str}
-        # last line is always return 
-        set {_HqZr::noreturn} to true if parse mark is 2 else false
+    parse:
+        # -------------------------
+        # Capture inputs
+        # -------------------------
+        set {_HqZr::vars} to "%expr-1%"
+        if {_HqZr::vars} is "<none>":
+            set {_HqZr::vars} to ""
         set {_HqZr::expr} to first element of regex-1
-        
-        # -------------------------
-        # Resolve functional type
-        # -------------------------
+        set {_HqZr::noreturn} to true if parse mark is 2 else false
 
+        # -------------------------
         # Determine arity
+        # -------------------------
         set {_HqZr::arity} to 0
-        if {_HqZr::expr1} is not "":
-            if {_HqZr::expr1} contains "and":
+        if {_HqZr::vars} is not "":
+            if {_HqZr::vars} contains "and":
+                replace "(" with "" in {_HqZr::vars}
+                replace ")" with "" in {_HqZr::vars}
+                set {_HqZr::args::*} to split {_HqZr::vars} at " and "
                 set {_HqZr::arity} to 2
-                replace "(" with "" in {_HqZr::expr1}
-                replace ")" with "" in {_HqZr::expr1}
-                set {_HqZr::args::*} to split {_HqZr::expr1} at " and "
             else:
+                set {_HqZr::arg1} to {_HqZr::vars}
                 set {_HqZr::arity} to 1
-                set {_HqZr::arg1} to {_HqZr::expr1}
 
         # -------------------------
-        # No return (effects)
+        # Emit + bind (NO RETURN)
         # -------------------------
         if {_HqZr::noreturn} is true:
+
             if {_HqZr::arity} is 0:
-                set {_HqZr::type} to "Runnable" parsed as javatype
-                set {_HqZr::method} to "run"
-                set {_HqZr::args} to "{_HqZr::proxy}"
-                set {_HqZr::body} to "  %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy} stored in {_functions::run}:", "  %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of Runnable using {_functions::*}
 
             else if {_HqZr::arity} is 1:
-                set {_HqZr::type} to "Consumer" parsed as javatype
-                set {_HqZr::method} to "accept"
-                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::arg1}%"
-                set {_HqZr::body} to "  %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy}, %{_HqZr::arg1}% stored in {_functions::accept}:", "  %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of Consumer using {_functions::*}
 
             else:
-                set {_HqZr::type} to "BiConsumer" parsed as javatype
-                set {_HqZr::method} to "accept"
-                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}%"
-                set {_HqZr::body} to "  %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}% stored in {_functions::accept}:", "  %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of BiConsumer using {_functions::*}
 
         # -------------------------
-        # Return value
+        # Emit + bind (RETURNING)
         # -------------------------
         else:
+
             if {_HqZr::arity} is 0:
-                set {_HqZr::type} to "Supplier" parsed as javatype
-                set {_HqZr::method} to "get"
-                set {_HqZr::args} to "{_HqZr::proxy}"
-                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy} stored in {_functions::get}:", "  return %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of Supplier using {_functions::*}
 
             else if {_HqZr::arity} is 1:
-                set {_HqZr::type} to "Function" parsed as javatype
-                set {_HqZr::method} to "apply"
-                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::arg1}%"
-                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy}, %{_HqZr::arg1}% stored in {_functions::apply}:", "  return %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of Function using {_functions::*}
 
             else:
-                set {_HqZr::type} to "BiFunction" parsed as javatype
-                set {_HqZr::method} to "apply"
-                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}%"
-                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+                evalnode "create section with {_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}% stored in {_functions::apply}:", "  return %{_HqZr::expr}%"
+                set {_HqZr::proxy} to new proxy instance of BiFunction using {_functions::*}
 
-                
-        # -------------------------
-        # Emit section
-        # -------------------------
-        evalnode "create section with %{_HqZr::args}% stored in {_functions::%{_HqZr::method}%}:", {_HqZr::body}
-        set {_HqZr::proxy} to new proxy instance of {_HqZr::type} using {_functions::*}
         continue
-        
+
     get:
         return {_HqZr::proxy}
