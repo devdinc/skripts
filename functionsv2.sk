@@ -1,0 +1,213 @@
+# =============================================================================
+# REQUIREMENTS
+# =============================================================================
+#
+# Skcrew, skript-reflect
+#
+# =============================================================================
+# LAMBDA EXPRESSION DOCUMENTATION
+# =============================================================================
+#
+# This expression provides lightweight Java-compatible lambda proxies
+# (Supplier, Function, BiFunction, Runnable, Consumer, BiConsumer).
+#
+# -----------------------------------------------------------------------------
+# Syntax
+# -----------------------------------------------------------------------------
+#
+# 1) Returning lambda (expressions only):
+#
+#    lambda [<variables>]: <expression>
+#
+#    - The body MUST be a single expression.
+#    - Effects are NOT allowed.
+#    - The value of the expression is implicitly returned.
+#
+# 2) Non-returning lambda (effects only):
+#
+#    lambda [<variables>]:- <effect>
+#
+#    - Used for side effects.
+#    - No return value is produced.
+#
+# -----------------------------------------------------------------------------
+# Examples
+# -----------------------------------------------------------------------------
+#
+# Supplier (no arguments, returns a value)
+# ----------------------------------------
+# set {_supplier} to lambda: "hello"
+# broadcast {_supplier}.get()
+#
+# set {_sum} to lambda: 2 + 3
+# broadcast {_sum}.get()
+#
+# Function (one argument, returns a value)
+# ----------------------------------------
+# set {_double} to lambda {_x}: {_x} * 2
+# broadcast {_double}.apply(5) # 10
+#
+# set {_format} to lambda {_x}: "%{_x}%_ok"
+# broadcast {_format}.apply("abc") # abc_ok
+#
+# BiFunction (two arguments, returns a value)
+# -------------------------------------------
+# set {_add} to lambda {_a}, {_b}: {_a} + {_b}
+# broadcast {_add}.apply(3, 4) # 7
+#
+# Runnable (no arguments, no return)
+# ----------------------------------
+# set {_task} to lambda:- broadcast "ran"
+# {_task}.run()
+#
+# Consumer (one argument, no return)
+# ----------------------------------
+# set {_printer} to lambda {_x}:- broadcast {_x}
+# {_printer}.accept(42)
+#
+# BiConsumer (two arguments, no return)
+# -------------------------------------
+# set {_pair} to lambda {_a}, {_b}:- broadcast "%{_a}%, %{_b}%"
+# {_pair}.accept("x", "y")
+#
+# Passing composite data to bypass arity limits
+# ----------------------------------------------
+# set {_map} to new HashMap()
+# {_map}.put(1, 2)
+# {_map}.put(2, 3)
+#
+# set {_adder} to lambda {_m}:- {_m}.values().stream().forEach(lambda {_v}:- add {_v} to {-total})
+#
+# {_adder}.accept({_map})
+#
+# -----------------------------------------------------------------------------
+# Arity Rules
+# -----------------------------------------------------------------------------
+#
+# - 0 arguments:
+#     Supplier<T>  (returning)
+#     Runnable     (non-returning)
+#
+# - 1 argument:
+#     Function<T, R>   (returning)
+#     Consumer<T>      (non-returning)
+#
+# - 2 arguments:
+#     BiFunction<T, U, R> (returning)
+#     BiConsumer<T, U>    (non-returning)
+#
+# - More than 2 arguments are NOT supported.
+#   To work around this, pass a single variable containing a arraylist, map,
+#   or other composite object.
+#
+# -----------------------------------------------------------------------------
+# Limitations
+# -----------------------------------------------------------------------------
+#
+# - Lambdas are strictly single-line.
+# - Returning lambdas (:) cannot contain effects.
+# - Effect lambdas (:-) cannot return values.
+# - Imported classes or complex expressions may fail to resolve inline.
+#   Mitigation: wrap the logic inside a normal function and call it.
+#
+# -----------------------------------------------------------------------------
+# Notes
+# -----------------------------------------------------------------------------
+#
+# - array lists, maps, and objects may be passed as a single argument
+#   to simulate higher arity.
+#
+# =============================================================================
+
+
+import:
+    java.util.function.Supplier
+    java.util.function.Function
+    java.util.function.Consumer
+    java.lang.Runnable
+    ch.njol.skript.lang.Variable
+    java.util.function.BiFunction
+    java.util.function.BiConsumer
+
+expression:
+    patterns:
+        lambda[ %-objects%]\:(1: |2:- )<(.+)>
+    parse: 
+        set {_HqZr::_str} to "%expr-1%"
+        if {_HqZr::_str} is "<none>":
+            set {_HqZr::_str} to ""
+        set {_HqZr::expr1} to {_HqZr::_str}
+        # last line is always return 
+        set {_HqZr::noreturn} to true if parse mark is 2 else false
+        set {_HqZr::expr} to first element of regex-1
+        
+        # -------------------------
+        # Resolve functional type
+        # -------------------------
+
+        # Determine arity
+        set {_HqZr::arity} to 0
+        if {_HqZr::expr1} is not "":
+            if {_HqZr::expr1} contains "and":
+                set {_HqZr::arity} to 2
+                replace "(" with "" in {_HqZr::expr1}
+                replace ")" with "" in {_HqZr::expr1}
+                set {_HqZr::args::*} to split {_HqZr::expr1} at " and "
+            else:
+                set {_HqZr::arity} to 1
+                set {_HqZr::arg1} to {_HqZr::expr1}
+
+        # -------------------------
+        # No return (effects)
+        # -------------------------
+        if {_HqZr::noreturn} is true:
+            if {_HqZr::arity} is 0:
+                set {_HqZr::type} to "Runnable" parsed as javatype
+                set {_HqZr::method} to "run"
+                set {_HqZr::args} to "{_HqZr::proxy}"
+                set {_HqZr::body} to "  %{_HqZr::expr}%"
+
+            else if {_HqZr::arity} is 1:
+                set {_HqZr::type} to "Consumer" parsed as javatype
+                set {_HqZr::method} to "accept"
+                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::arg1}%"
+                set {_HqZr::body} to "  %{_HqZr::expr}%"
+
+            else:
+                set {_HqZr::type} to "BiConsumer" parsed as javatype
+                set {_HqZr::method} to "accept"
+                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}%"
+                set {_HqZr::body} to "  %{_HqZr::expr}%"
+
+        # -------------------------
+        # Return value
+        # -------------------------
+        else:
+            if {_HqZr::arity} is 0:
+                set {_HqZr::type} to "Supplier" parsed as javatype
+                set {_HqZr::method} to "get"
+                set {_HqZr::args} to "{_HqZr::proxy}"
+                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+
+            else if {_HqZr::arity} is 1:
+                set {_HqZr::type} to "Function" parsed as javatype
+                set {_HqZr::method} to "apply"
+                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::arg1}%"
+                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+
+            else:
+                set {_HqZr::type} to "BiFunction" parsed as javatype
+                set {_HqZr::method} to "apply"
+                set {_HqZr::args} to "{_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}%"
+                set {_HqZr::body} to "  return %{_HqZr::expr}%"
+
+                
+        # -------------------------
+        # Emit section
+        # -------------------------
+        evalnode "create section with %{_HqZr::args}% stored in {_functions::%{_HqZr::method}%}:", {_HqZr::body}
+        set {_HqZr::proxy} to new proxy instance of {_HqZr::type} using {_functions::*}
+        continue
+        
+    get:
+        return {_HqZr::proxy}
