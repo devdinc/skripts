@@ -1,0 +1,215 @@
+# =============================================================================
+# Persistent Data Container (PDC) Utility Expressions for Skript
+# =============================================================================
+# WARNING: DONT SKIP NOTES, OR CAVEATS
+# 
+# Overview
+# --------
+# This file provides a set of Skript expressions and helpers for interacting
+# with Bukkit's PersistentDataContainer (PDC). It supports both native
+# PersistentDataType values and arbitrary objects via Base64 serialization.
+#
+# Key Features
+# ------------
+# 1. Unified "key in pdc" expression
+#    - Read, write, and delete PDC entries using a single expression.
+#    - Automatically resolves PersistentDataHolder → PersistentDataContainer.
+#
+# 2. Optional PersistentDataType
+#    - When a PersistentDataType (PDT) is provided, values are stored natively.
+#    - When omitted, values are serialized to Base64 and stored as STRING.
+#
+# 3. NamespacedKey convenience expression
+#    - Allows creation of NamespacedKey from strings like "plugin:key".
+#
+# 4. Safety and validation
+#    - Runtime validation ensures correct types for key, container, and PDT.
+#    - Invalid expressions fail silently to avoid hard Skript errors.
+#
+#
+# Serialization Notes
+# -------------------
+# - Arbitrary objects are serialized using BukkitObjectOutputStream and stored
+#   as Base64-encoded STRING values.
+# - This is required because Skript does not support byte[] or unboxing.
+# - Only Serializable objects should be stored without a PDT.
+#
+#
+# Syntax Summary
+# --------------
+# Reading:
+#   set {_value} to key "plugin:test" within player's pdc
+#   set {_value} to key "plugin:test" in player's pdc for pdt string
+#
+# Writing:
+#   set key "plugin:test" within player's pdc to 5
+#   set key "plugin:test" in player's pdc for pdt integer to 5
+#
+# Deleting:
+#   delete key "plugin:test" within player's pdc
+#
+# Notes: WARNING
+# - If no PDT is specified, use "within" instead of "in", as a silent error is
+#   thrown for some reason, I have no idea of.
+# - Deleting or setting a value to null or a not set value removes the key.
+#
+#
+# Provided Expressions & Properties
+# ---------------------------------
+# - %namespaced key% [with]in %persistent data holder/persistent data container% [for %persistent data type%]
+#     Core PDC accessor (read / set / delete).
+#
+# - [namespaced]( |-)key %string%
+#     Creates a NamespacedKey from "namespace:key".
+#
+# - pdc (persistent data holder property)
+#     Shortcut to get an object's PersistentDataContainer.
+#
+# - (pdt|[persistent data ]type) <type>
+#     Maps friendly names to PersistentDataType constants.
+#
+#
+# Dependencies
+# ------------
+# - Skript
+# - skBee
+# - skript-reflect
+#
+#
+# Caveats
+# -------
+# - Deserialization failures will propagate runtime errors.
+# - Changing class definitions may break previously stored data.
+# - Base64 storage is less efficient than native PDT usage.
+#
+# =============================================================================
+
+import:
+    org.bukkit.NamespacedKey
+    org.bukkit.persistence.PersistentDataContainer
+    org.bukkit.persistence.PersistentDataHolder
+    org.bukkit.persistence.PersistentDataType
+    java.io.ByteArrayInputStream
+    java.io.ByteArrayOutputStream
+    org.bukkit.util.io.BukkitObjectInputStream
+    org.bukkit.util.io.BukkitObjectOutputStream
+    java.util.Base64
+    ch.njol.skript.lang.Variable
+
+local function validate_pdcexpr(key: object, pdc: object, pdt: object) :: boolean:
+    if all:
+        {_pdt} is set
+        {_pdt} is not an instance of PersistentDataType
+    then:
+        return false
+    if any:
+        {_key} is not an instance of NamespacedKey
+        {_pdc} is not an instance of PersistentDataContainer
+    then:
+        return false
+    return true
+
+# e.g. key "plugin:test" in player's pdc for type byte 
+expression %object% [with]in %object%[ for %-object%]: 
+    parse:
+        set {_key} to expr-1
+        set {_pdt} to expr-3
+            
+        if any:
+            "%{_key}%" is "[namespaced]( |-)key %%string%%"
+            {_key} is instance of Variable
+        then:
+            if any:
+                "%{_pdt}%" contains "(pdt|[persistent data ]type)"
+                "%{_pdt}%" contains "PersistentDataType"
+                {_pdt} is instance of Variable
+                {_pdt} is not set
+            then:
+                continue
+        stop
+
+    get:
+        set {_key} to expr-1
+        set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
+        set {_pdt} to expr-3
+        
+        stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
+            
+        if {_pdt} is not set:
+            if {_pdc}.has({_key}, PersistentDataType.STRING) is false:
+                return {_none}
+
+            set {_encoded} to {_pdc}.get({_key}, PersistentDataType.STRING)
+            set {_bytes} to Base64.getDecoder().decode({_encoded})
+            set {_in} to new BukkitObjectInputStream(new ByteArrayInputStream({_bytes}))
+            set {_obj} to {_in}.readObject()
+            {_in}.close()
+            return {_obj}
+        else:
+            return {_pdc}.get({_key}, {_pdt})
+
+    set:
+        set {_key} to expr-1
+        set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
+        set {_pdt} to expr-3
+        
+        stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
+        
+        set {_value} to change value
+        
+        if any:
+            {_value} is null
+            {_value} is not set
+        then:
+            {_pdc}.remove({_key})
+            stop
+
+        if {_pdt} is not set:
+            set {_baos} to new ByteArrayOutputStream()
+            set {_out} to new BukkitObjectOutputStream({_baos})
+            {_out}.writeObject({_value})
+            {_out}.close()
+
+            set {_encoded} to Base64.getEncoder().encodeToString({_baos}.toByteArray())
+            {_pdc}.set({_key}, PersistentDataType.STRING, {_encoded})
+
+        else:
+            {_pdc}.set({_key}, {_pdt}, {_value})
+
+    delete:
+        set {_key} to expr-1
+        set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
+        set {_pdt} to expr-3
+        
+        stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
+        
+        {_pdc}.remove({_key})
+
+# e.g
+# Creates a NamespacedKey from a string like "plugin:key"
+expression [namespaced]( |-)key %string%:
+    parse:
+        continue
+    get:
+        return NamespacedKey.fromString(expr-1, null)
+        
+object property p[ersistent ]d[ata ]c[ontainer]:
+    parse:
+        continue
+    get:
+        return expr-1.getPersistentDataContainer()
+
+expression (pdt|[persistent data ]type) (1:str[ing]|2:int[eger]|3:long|4:float|5:double|6:byte|7:short|8:bool[ean]):
+    parse:
+        continue
+    get:
+        return switch return parse mark:
+            case 1 -> PersistentDataType.STRING
+            case 2 -> PersistentDataType.INTEGER
+            case 3 -> PersistentDataType.LONG
+            case 4 -> PersistentDataType.FLOAT
+            case 5 -> PersistentDataType.DOUBLE
+            case 6 -> PersistentDataType.BYTE
+            case 7 -> PersistentDataType.SHORT
+            case 8 -> PersistentDataType.BOOLEAN
+            default -> {_none}
