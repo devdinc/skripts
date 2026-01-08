@@ -15,7 +15,7 @@
 # Syntax
 # -----------------------------------------------------------------------------
 #
-# 1) Returning lambda (expressions only):
+# 1) lambda:
 #
 #    lambda [<variables>]: <expression/effect>
 #
