@@ -17,10 +17,9 @@
 #
 # 1) Returning lambda (expressions only):
 #
-#    lambda [<variables>]: <expression>
+#    lambda [<variables>]: <expression/effect>
 #
-#    - The body MUST be a single expression.
-#    - Effects are NOT allowed.
+#    - The body MUST be a single expression or an effect.
 #    - The value of the expression is implicitly returned.
 #
 # 2) Non-returning lambda (effects only):
@@ -116,6 +115,9 @@
 #
 # - array lists, maps, and objects may be passed as a single argument
 #   to simulate higher arity.
+# - array is buggy, you have to spread(...) inside lambda to use it, as [n]
+#   does not work
+# - variable lists as parameters never work.
 #
 # =============================================================================
 
@@ -126,6 +128,64 @@ import:
     java.util.function.BiFunction
     java.util.function.BiConsumer
     java.lang.Runnable
+    ch.njol.skript.lang.ExpressionList
+    
+local function isEffect(input:string) :: boolean:
+    set {_ob} to parseEffectSilent({_input})
+    if {_ob} is not set:
+        return false
+    return true
+    
+import:
+    ch.njol.skript.Skript
+    ch.njol.skript.lang.EffectSection
+    ch.njol.skript.lang.function.EffFunctionCall
+    ch.njol.skript.lang.SkriptParser
+    ch.njol.skript.log.SkriptLogger
+    ch.njol.skript.lang.EffectSectionEffect
+    org.skriptlang.skript.registration.SyntaxRegistry
+    
+local function getFunctionReference(call: object) :: object:
+    set {_class} to {_call}.getClass()
+    set {_field} to {_class}.getDeclaredField("function")
+    {_field}.setAccessible(true)
+    return {_field}.get({_call})
+
+# equals effect.parse 
+local function parseEffectSilent(input: string) :: object:
+    # we use a logger to remove stupid useless 1 + 1 is not a java object calls
+    # this is safe enough for prod since evalnode parses it.
+    set {_log} to SkriptLogger.startParseLogHandler()
+
+    # 1. Function calls
+    set {_func} to EffFunctionCall.parse({_input})
+    if {_func} is set:
+        set {_ref} to getFunctionReference({_func})
+
+        # Has return → expression-like
+        if {_ref}.getReturnType() is set:
+            {_log}.close()
+            return {_none} # treat as expression
+
+        # No return → effect-only
+        {_log}.close()
+        return {_func}
+
+    # 2. Effect sections
+    set {_section} to EffectSection.parse({_input}, null, null, null)
+    if {_section} is set:
+        {_log}.close()
+        return new EffectSectionEffect({_section})
+
+    # 3. Normal effects
+    set {_registry} to Skript.instance().syntaxRegistry()
+    set {_iterator} to {_registry}.syntaxes(SyntaxRegistry.EFFECT).iterator()
+    set {_effect} to SkriptParser.parse({_input}, {_iterator}, null)
+    {_log}.clear()
+    {_log}.close()
+    
+    return {_effect}
+    
 
 expression:
     patterns:
@@ -134,24 +194,26 @@ expression:
         # -------------------------
         # Capture inputs
         # -------------------------
-        set {_HqZr::vars} to "%expr-1%"
-        if {_HqZr::vars} is "<none>":
-            set {_HqZr::vars} to ""
+        set {_HqZr::vars} to expr-1
         set {_HqZr::expr} to first element of regex-1
-        set {_HqZr::noreturn} to true if parse mark is 2 else false
+        set {_HqZr::noreturn} to isEffect({_HqZr::expr})
+        set {_HqZr::noreturn} to true if parse mark is 2
 
         # -------------------------
         # Determine arity
         # -------------------------
         set {_HqZr::arity} to 0
-        if {_HqZr::vars} is not "":
-            if {_HqZr::vars} contains "and":
+        if {_HqZr::vars} is set:
+            if expr-1 is instance of ExpressionList:
+                # we cant loop since this is parse time...
+                # it doesnt matter as who uses (/)/" and " inside vars anyways.
+                set {_HqZr::vars} to "%{_HqZr::vars}%"
                 replace "(" with "" in {_HqZr::vars}
                 replace ")" with "" in {_HqZr::vars}
                 set {_HqZr::args::*} to split {_HqZr::vars} at " and "
                 set {_HqZr::arity} to 2
             else:
-                set {_HqZr::arg1} to {_HqZr::vars}
+                set {_HqZr::arg1} to "%{_HqZr::vars}%"
                 set {_HqZr::arity} to 1
 
         # -------------------------
