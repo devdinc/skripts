@@ -73,3 +73,15 @@ local function test():
     set {_adder} to lambda {_arg}:- {_arg}.values().stream().forEach(lambda {_x}:- add {_x} to {-varl})
     {_adder}.accept({_map})
     broadcast "varlist failed" if {-varl} is not 6
+    
+    # array
+    set {_pureadder} to lambda {_varl}: sum(...{_varl})
+    set {_val} to {_pureadder}.apply([1, 2, 3])
+    broadcast "array failed" if {_val} is not 6
+    
+    # failing real variable list
+    set {_test::*} to 1, 2 and 3
+    set {_realpureadder} to lambda {_varl::*}: sum({_test::*})
+    set {_val} to {_realpureadder}.apply(raw expression of {_test::*})
+    broadcast "unexpected: real variable list succeded" if {_val} is 6
+    
