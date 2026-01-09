@@ -2,39 +2,77 @@
 # REQUIREMENTS
 # =============================================================================
 #
-# Skcrew, skript-reflect
+# Skript
+# Skcrew
+# skript-reflect
 #
 # =============================================================================
 # LAMBDA EXPRESSION DOCUMENTATION
 # =============================================================================
 #
-# This expression provides lightweight Java-compatible lambda proxies
-# (Supplier, Function, BiFunction, Runnable, Consumer, BiConsumer).
+# This module provides lightweight, Java-compatible lambda proxies backed by
+# real functional interfaces:
+#
+#   - Supplier<T>
+#   - Function<T, R>
+#   - BiFunction<T, U, R>
+#   - Runnable
+#   - Consumer<T>
+#   - BiConsumer<T, U>
+#
+# Lambdas are compiled into proxy instances and may be passed directly to Java
+# APIs, streams, or stored for later invocation.
 #
 # -----------------------------------------------------------------------------
-# Syntax
+# Core Syntax
 # -----------------------------------------------------------------------------
 #
-# 1) lambda:
+# 1) Returning lambda
 #
-#    lambda [<variables>]: <expression/effect>
+#    lambda [<variables>]: <body>
 #
-#    - The body MUST be a single expression or an effect.
-#    - The value of the expression is implicitly returned.
-#
-# 2) Non-returning lambda (effects only):
+# 2) Non-returning lambda (effect-only)
 #
 #    lambda [<variables>]:- <effect>
 #
-#    - Used for side effects.
+#    - Used for side effects only.
 #    - No return value is produced.
+#
+# 3) Forced returning lambda
+#
+#    lambda [<variables>]:+ <expression>
+#
+#    - Forces returning behavior even if the body looks like an effect.
+#
+# -----------------------------------------------------------------------------
+# Java Interface Mapping (Arity-Based)
+# -----------------------------------------------------------------------------
+#
+# Arity is determined by the number of declared variables.
+#
+# 0 arguments:
+#   - Supplier<T>   (returning)
+#   - Runnable      (non-returning)
+#
+# 1 argument:
+#   - Function<T, R>   (returning)
+#   - Consumer<T>      (non-returning)
+#
+# 2 arguments:
+#   - BiFunction<T, U, R> (returning)
+#   - BiConsumer<T, U>    (non-returning)
+#
+# More than 2 arguments are NOT supported.
+#
+# Workaround:
+#   Pass a single composite object (map, list, custom object) instead.
 #
 # -----------------------------------------------------------------------------
 # Examples
 # -----------------------------------------------------------------------------
 #
 # Supplier (no arguments, returns a value)
-# ----------------------------------------
+# ---------------------------------------
 # set {_supplier} to lambda: "hello"
 # broadcast {_supplier}.get()
 #
@@ -42,7 +80,7 @@
 # broadcast {_sum}.get()
 #
 # Function (one argument, returns a value)
-# ----------------------------------------
+# ---------------------------------------
 # set {_double} to lambda {_x}: {_x} * 2
 # broadcast {_double}.apply(5) # 10
 #
@@ -50,76 +88,107 @@
 # broadcast {_format}.apply("abc") # abc_ok
 #
 # BiFunction (two arguments, returns a value)
-# -------------------------------------------
+# ------------------------------------------
 # set {_add} to lambda {_a}, {_b}: {_a} + {_b}
 # broadcast {_add}.apply(3, 4) # 7
 #
 # Runnable (no arguments, no return)
-# ----------------------------------
+# ---------------------------------
 # set {_task} to lambda:- broadcast "ran"
 # {_task}.run()
 #
 # Consumer (one argument, no return)
-# ----------------------------------
+# ---------------------------------
 # set {_printer} to lambda {_x}:- broadcast {_x}
 # {_printer}.accept(42)
 #
 # BiConsumer (two arguments, no return)
-# -------------------------------------
+# ------------------------------------
 # set {_pair} to lambda {_a}, {_b}:- broadcast "%{_a}%, %{_b}%"
 # {_pair}.accept("x", "y")
 #
-# Passing composite data to bypass arity limits
-# ----------------------------------------------
+# -----------------------------------------------------------------------------
+# Typed Alias Syntax
+# -----------------------------------------------------------------------------
+#
+# In addition to the generic `lambda` syntax, explicit aliases are available.
+# These enforce arity and return behavior at parse time.
+#
+# Returning:
+#   supplier:
+#   getter:
+#   function {_x}:
+#   applier {_x}:
+#   bifunction {_a}, {_b}:
+#   biapplier {_a}, {_b}:
+#
+# Non-returning:
+#   runnable:
+#   runner:
+#   consumer {_x}:
+#   accepter {_x}:
+#   biconsumer {_a}, {_b}:
+#   biaccepter {_a}, {_b}:
+#
+# Example:
+#   set {_f} to function {_x}: {_x} * 2
+#   set {_r} to runnable: broadcast "hello"
+#
+# -----------------------------------------------------------------------------
+# Invoking Lambdas (Helper Expression)
+# -----------------------------------------------------------------------------
+#
+# Lambdas may be invoked directly via Java methods, or using:
+#
+#   run lambda <lambda> [with <arguments>]
+#
+# The correct method (get, apply, accept, run) is resolved automatically.
+#
+# Examples:
+#   run lambda {_supplier}
+#   run lambda {_double} with 5
+#   run lambda {_pair} with "a", "b"
+#
+# -----------------------------------------------------------------------------
+# Passing Composite Data (Arity Workaround)
+# -----------------------------------------------------------------------------
+#
 # set {_map} to new HashMap()
 # {_map}.put(1, 2)
 # {_map}.put(2, 3)
 #
-# set {_adder} to lambda {_m}:- {_m}.values().stream().forEach(lambda {_v}:- add {_v} to {-total})
+# set {-total} to 0
+# set {_inlineforeach} to lambda {_v}:- add {_v} to {-total}
+# set {_adder} to lambda {_m}:- {_m}.values().stream().forEach({_inlineforeach})
 #
 # {_adder}.accept({_map})
-#
-# -----------------------------------------------------------------------------
-# Arity Rules
-# -----------------------------------------------------------------------------
-#
-# - 0 arguments:
-#     Supplier<T>  (returning)
-#     Runnable     (non-returning)
-#
-# - 1 argument:
-#     Function<T, R>   (returning)
-#     Consumer<T>      (non-returning)
-#
-# - 2 arguments:
-#     BiFunction<T, U, R> (returning)
-#     BiConsumer<T, U>    (non-returning)
-#
-# - More than 2 arguments are NOT supported.
-#   To work around this, pass a single variable containing a arraylist, map,
-#   or other composite object.
 #
 # -----------------------------------------------------------------------------
 # Limitations
 # -----------------------------------------------------------------------------
 #
 # - Lambdas are strictly single-line.
-# - Returning lambdas (:) cannot contain effects.
-# - Effect lambdas (:-) cannot return values.
-# - Imported classes or complex expressions may fail to resolve inline.
-#   Mitigation: wrap the logic inside a normal function and call it.
+# - Returning lambdas (:+) cannot contain effects.
+# - Non-returning lambdas (:-) cannot contain expressions.
+# - Non-returning lambdas (:-) cannot return values.
+# - Variable lists as parameters are NOT supported.
+# - Arrays are unreliable inside lambdas:
+#     - Indexing ([n]) does not work.
+#     - Use spread(...) before passing them in.
+# - Imported classes or complex expressions MAY(there is a change of it) fail inline.
+#   If failing, to mitigate:
+#     - If you are using lambda without (+/-) try adding them to see if it works.
+#     - wrap logic in a normal function and call it.
 #
 # -----------------------------------------------------------------------------
 # Notes
 # -----------------------------------------------------------------------------
 #
-# - array lists, maps, and objects may be passed as a single argument
-#   to simulate higher arity.
-# - array is buggy, you have to spread(...) inside lambda to use it, as [n]
-#   does not work
-# - variable lists as parameters never work.
+# - Return-vs-effect is auto-detected unless explicitly overridden with :- or :+.
+# - Lambdas are real Java proxies and fully compatible with streams and APIs.
 #
 # =============================================================================
+
 
 import:
     java.util.function.Supplier
@@ -129,6 +198,7 @@ import:
     java.util.function.BiConsumer
     java.lang.Runnable
     ch.njol.skript.lang.ExpressionList
+    ch.njol.skript.lang.Variable
     
 local function isEffect(input:string) :: boolean:
     set {_ob} to parseEffectSilent({_input})
@@ -186,71 +256,153 @@ local function parseEffectSilent(input: string) :: object:
     
     return {_effect}
     
+function functions_build_lambda(args: strings, body: string, noreturn: boolean) :: object:
+    set {_arity} to size of {_args::*}
+    # -------------------------
+    # Emit + bind (NO RETURN)
+    # -------------------------
+    if {_noreturn} is true:
+
+        if {_arity} is 0:
+            evalnode "create section with {_proxy} stored in {_functions::run}:", "  %{_body}%"
+            set {_proxy} to new proxy instance of Runnable using {_functions::*}
+
+        else if {_arity} is 1:
+            evalnode "create section with {_proxy}, %{_args::1}% stored in {_functions::accept}:", "  %{_body}%"
+            set {_proxy} to new proxy instance of Consumer using {_functions::*}
+
+        else:
+            evalnode "create section with {_proxy}, %{_args::1}%, %{_args::2}% stored in {_functions::accept}:", "  %{_body}%"
+            set {_proxy} to new proxy instance of BiConsumer using {_functions::*}
+
+    # -------------------------
+    # Emit + bind (RETURNING)
+    # -------------------------
+    else:
+
+        if {_arity} is 0:
+            evalnode "create section with {_proxy} stored in {_functions::get}:", "  return %{_body}%"
+            set {_proxy} to new proxy instance of Supplier using {_functions::*}
+
+        else if {_arity} is 1:
+            evalnode "create section with {_proxy}, %{_args::1}% stored in {_functions::apply}:", "  return %{_body}%"
+            set {_proxy} to new proxy instance of Function using {_functions::*}
+
+        else:
+            evalnode "create section with {_proxy}, %{_args::1}%, %{_args::2}% stored in {_functions::apply}:", "  return %{_body}%"
+            set {_proxy} to new proxy instance of BiFunction using {_functions::*}
+    
+    return {_proxy}
+    
+local function extractArgs(vars: object) :: strings:
+    if {_vars} is instance of ExpressionList:
+        loop ...{_vars}.getExpressions():
+            add "%loop-value%" to {_ret::*}
+    else if {_vars} is instance of Variable:
+        add "%{_vars}%" to {_ret::*}
+    return {_ret::*}
 
 expression:
     patterns:
-        lambda[ %-objects%]\:(1: |2:- )<(.+)>
+        lambda[ %-objects%]\:(1: |2:- |3:+ )<(.+)>
     parse:
         # -------------------------
         # Capture inputs
         # -------------------------
-        set {_HqZr::vars} to expr-1
-        set {_HqZr::expr} to first element of regex-1
-        set {_HqZr::noreturn} to isEffect({_HqZr::expr})
-        set {_HqZr::noreturn} to true if parse mark is 2
+        set {_functionsv2.sk::ctx::vars} to expr-1
+        set {_functionsv2.sk::ctx::expr} to first element of regex-1
+        set {_functionsv2.sk::ctx::noreturn} to isEffect({_functionsv2.sk::ctx::expr}) if parse mark is 1
+        set {_functionsv2.sk::ctx::noreturn} to true if parse mark is 2
+        set {_functionsv2.sk::ctx::noreturn} to false if parse mark is 3
 
-        # -------------------------
-        # Determine arity
-        # -------------------------
-        set {_HqZr::arity} to 0
-        if {_HqZr::vars} is set:
-            if expr-1 is instance of ExpressionList:
-                # we cant loop since this is parse time...
-                # it doesnt matter as who uses (/)/" and " inside vars anyways.
-                set {_HqZr::vars} to "%{_HqZr::vars}%"
-                replace "(" with "" in {_HqZr::vars}
-                replace ")" with "" in {_HqZr::vars}
-                set {_HqZr::args::*} to split {_HqZr::vars} at " and "
-                set {_HqZr::arity} to 2
-            else:
-                set {_HqZr::arg1} to "%{_HqZr::vars}%"
-                set {_HqZr::arity} to 1
+        set {_functionsv2.sk::ctx::args::*} to extractArgs({_functionsv2.sk::ctx::vars})
 
-        # -------------------------
-        # Emit + bind (NO RETURN)
-        # -------------------------
-        if {_HqZr::noreturn} is true:
-
-            if {_HqZr::arity} is 0:
-                evalnode "create section with {_HqZr::proxy} stored in {_functions::run}:", "  %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of Runnable using {_functions::*}
-
-            else if {_HqZr::arity} is 1:
-                evalnode "create section with {_HqZr::proxy}, %{_HqZr::arg1}% stored in {_functions::accept}:", "  %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of Consumer using {_functions::*}
-
-            else:
-                evalnode "create section with {_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}% stored in {_functions::accept}:", "  %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of BiConsumer using {_functions::*}
-
-        # -------------------------
-        # Emit + bind (RETURNING)
-        # -------------------------
-        else:
-
-            if {_HqZr::arity} is 0:
-                evalnode "create section with {_HqZr::proxy} stored in {_functions::get}:", "  return %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of Supplier using {_functions::*}
-
-            else if {_HqZr::arity} is 1:
-                evalnode "create section with {_HqZr::proxy}, %{_HqZr::arg1}% stored in {_functions::apply}:", "  return %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of Function using {_functions::*}
-
-            else:
-                evalnode "create section with {_HqZr::proxy}, %{_HqZr::args::1}%, %{_HqZr::args::2}% stored in {_functions::apply}:", "  return %{_HqZr::expr}%"
-                set {_HqZr::proxy} to new proxy instance of BiFunction using {_functions::*}
+        set {_functionsv2.sk::ctx::proxy} to functions_build_lambda({_functionsv2.sk::ctx::args::*}, {_functionsv2.sk::ctx::expr}, {_functionsv2.sk::ctx::noreturn})
 
         continue
 
     get:
-        return {_HqZr::proxy}
+        return {_functionsv2.sk::ctx::proxy}
+        
+expression:
+    patterns:
+        (1:supplier|1:getter|2:runnable|2:runner)[ %-objects%]\: <(.+)>
+        (3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier) %-objects%\: <(.+)>
+
+    parse:
+        set {_functionsv2.sk::ctx::vars} to expr-1
+        set {_functionsv2.sk::ctx::expr} to first element of regex-1
+
+        set {_functionsv2.sk::ctx::noreturn} to true
+        if any:
+            parse mark is 1
+            parse mark is 4
+            parse mark is 6
+        then:
+            set {_functionsv2.sk::ctx::noreturn} to false
+
+        set {_functionsv2.sk::ctx::args::*} to extractArgs({_functionsv2.sk::ctx::vars})
+
+        if any:
+            parse mark is 1
+            parse mark is 2
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} > 0:
+                stop
+
+        if any:
+            parse mark is 3
+            parse mark is 4
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} is 0:
+                stop
+
+        if any:
+            parse mark is 5
+            parse mark is 6
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} is not 2:
+                stop
+
+        set {_functionsv2.sk::ctx::proxy} to functions_build_lambda({_functionsv2.sk::ctx::args::*},{_functionsv2.sk::ctx::expr},{_functionsv2.sk::ctx::noreturn})
+        continue
+
+    get:
+        return {_functionsv2.sk::ctx::proxy}
+            
+# run lambda <lambda> [with <-args>]
+expression run [lambda] %object% [with %-objects%]:
+    parse:
+        set {_functionsv2.sk::ctx::args} to ""
+        if expr-2 is set:
+            if expr-2 is instance of ExpressionList:
+                loop ...expr-2.getExpressions():
+                    add "%loop-value%" to {_functionsv2.sk::ctx::_args::*}
+                set {_functionsv2.sk::ctx::args} to join {_functionsv2.sk::ctx::_args::*} with ", "
+            else:
+                set {_functionsv2.sk::ctx::args} to "%expr-2%"
+            
+        continue
+    get:
+        loop method names of expr-1:
+            loop-value is instance of Runnable:
+                set {_functionsv2.sk::ctx::method} to "run"
+            loop-value is instance of Consumer:
+                set {_functionsv2.sk::ctx::method} to "accept"
+            loop-value is instance of BiConsumer:
+                set {_functionsv2.sk::ctx::method} to "accept"
+            loop-value is instance of Function:
+                set {_functionsv2.sk::ctx::method} to "apply"
+            loop-value is instance of BiFunction:
+                set {_functionsv2.sk::ctx::method} to "apply"
+            loop-value is instance of Supplier:
+                set {_functionsv2.sk::ctx::method} to "get"
+                
+        if {_functionsv2.sk::ctx::method} is not set:
+            stop
+    
+        set {_functionsv2.sk::ctx::lambdaq} to  expr-1
+        evalnode "if {_none} is not set:", "  set {_functionsv2.sk::ctx::val} to {_functionsv2.sk::ctx::lambdaq}.%{_functionsv2.sk::ctx::method}%(%{_functionsv2.sk::ctx::args}%)"
+        return {_functionsv2.sk::ctx::val}
+        
+# TODO planned new expressions such as for each for utility, in a seperate file
