@@ -6,82 +6,83 @@ import:
     java.util.HashMap
 
 local function test():
-    # -------------------------
-    # Supplier (no args, return)
-    # -------------------------
-    set {_supplier} to lambda: "test"
-    broadcast "supplier basic failed" if {_supplier}.get() is not "test"
-    set {_supplier2} to lambda: 2 + 3
-    broadcast "supplier expression failed" if {_supplier2}.get() is not 5
-    # -------------------------
-    # Function (arg, return)
-    # -------------------------
-    set {_function} to lambda {_x}: {_x} * 5
-    broadcast "function basic failed" if {_function}.apply(5) is not 25
-    set {_function2} to lambda {_x}: "%{_x}%_ok"
-    broadcast "function string failed" if {_function2}.apply("abc") is not "abc_ok"
-    # -------------------------
-    # Runnable (no args, no return)
-    # -------------------------
-    delete {-ran}
-    set {_runnable} to lambda:- set {-ran} to true
-    {_runnable}.run()
-    broadcast "runnable side-effect failed" if {-ran} is not true
-    # -------------------------
-    # Consumer (arg, no return)
-    # -------------------------
-    delete {-consumed}
-    set {_consumer} to lambda {_x}:- set {-consumed} to {_x}
-    {_consumer}.accept(42)
-    broadcast "consumer side-effect failed" if {-consumed} is not 42
-    # -------------------------
+    clear {-functions::test::*}
+
+    broadcast "supplier fail" if (supplier: 1).get() is not 1
+    broadcast "getter fail" if (getter: "ok").get() is not "ok"
+
+    (lambda:- set {-functions::test::temp::0} to 1).run()
+    broadcast "runnable fail" if {-functions::test::temp::0} is not 1
+
+    (consumer {_x}: set {-functions::test::temp::1} to {_x}).accept(5)
+    broadcast "consumer fail" if {-functions::test::temp::1} is not 5
+
+    (accepter {_x}: set {-functions::test::temp::2} to {_x}).accept("ok")
+    broadcast "accepter fail" if {-functions::test::temp::2} is not "ok"
+
+    broadcast "function fail" if (function {_x}: {_x} * 2).get(3) is not 6
+    broadcast "applier fail" if (applier {_x}: "%{_x}%!").get("hi") is not "hi!"
+
+    (biconsumer {_a}, {_b}: set {-functions::test::temp::3} to "%{_a}%,%{_b}%").accept(1, 2)
+    broadcast "biconsumer fail" if {-functions::test::temp::3} is not "1,2"
+
+    (biaccepter {_a}, {_b}: set {-functions::test::temp::4} to "%{_a}%-%{_b}%").accept("x", "y")
+    broadcast "biaccepter fail" if {-functions::test::temp::4} is not "x-y"
+
+    broadcast "bifunction fail" if (bifunction {_a}, {_b}: {_a} + {_b}).get(2, 3) is not 5
+    broadcast "biapplier fail" if (biapplier {_a}, {_b}: "%{_a}%:%{_b}%").get("a", "b") is not "a:b"
+
+    # Supplier
+    broadcast "supplier basic failed" if (supplier: "test").get() is not "test"
+    broadcast "supplier expression failed" if (supplier: 2 + 3).get() is not 5
+
+    # Function
+    broadcast "function basic failed" if (function {_x}: {_x} * 5).get(5) is not 25
+    broadcast "function string failed" if (function {_x}: "%{_x}%_ok").get("abc") is not "abc_ok"
+
+    # Runnable
+    (lambda:- set {-functions::test::ran} to true).run()
+    broadcast "runnable side-effect failed" if {-functions::test::ran} is not true
+
+    # Consumer
+    (consumer {_x}: set {-functions::test::consumed} to {_x}).accept(42)
+    broadcast "consumer side-effect failed" if {-functions::test::consumed} is not 42
+
     # Repeated invocation stability
-    # -------------------------
-    set {-sum} to 0
-    set {_adder} to lambda {_x}:- add {_x} to {-sum}
+    set {-functions::test::sum} to 0
+    set {_adder} to (consumer {_x}: add {_x} to {-functions::test::sum})
     {_adder}.accept(1)
     {_adder}.accept(2)
     {_adder}.accept(3)
-    broadcast "consumer repeat failed" if {-sum} is not 6
-    # -------------------------
-    # Mixed usage sanity
-    # -------------------------
-    set {_mix} to lambda {_x}: {_x} + 1
-    set {_val} to {_mix}.apply(9)
-    broadcast "mixed usage failed" if {_val} is not 10
-    
-    # -------------------------
-    # BiFunction (2 args, return)
-    # -------------------------
-    set {_bifunc} to lambda {_a}, {_b}: {_a} + {_b}
-    broadcast "bifunction failed" if {_bifunc}.apply(3, 4) is not 7
-    # -------------------------
-    # BiConsumer (2 args, no return)
-    # -------------------------
-    delete {-pair::*}
-    set {_bicons} to lambda {_a}, {_b}:- set {-pair::*} to {_a}, {_b}
-    {_bicons}.accept("x", "y")
-    broadcast "biconsumer failed" if {-pair::1} is not "x"
-    broadcast "biconsumer failed" if {-pair::2} is not "y"
-    
-    # variable list
-    set {-varl} to 0
+    broadcast "consumer repeat failed" if {-functions::test::sum} is not 6
+
+    # Mixed usage
+    broadcast "mixed usage failed" if (function {_x}: {_x} + 1).get(9) is not 10
+
+    # BiFunction
+    broadcast "bifunction failed" if (bifunction {_a}, {_b}: {_a} + {_b}).get(3, 4) is not 7
+
+    # BiConsumer
+    (biconsumer {_a}, {_b}: set {-functions::test::pair::*} to {_a} and {_b}).accept("x", "y")
+    broadcast "biconsumer failed" if {-functions::test::pair::1} is not "x"
+    broadcast "biconsumer failed" if {-functions::test::pair::2} is not "y"
+
+    # Variable list (Java stream)
+    set {-functions::test::varl} to 0
     set {_map} to new HashMap()
     {_map}.put(1, 1)
     {_map}.put(2, 3)
     {_map}.put(3, 2)
-    set {_adder} to lambda {_arg}:- {_arg}.values().stream().forEach(lambda {_x}:- add {_x} to {-varl})
-    {_adder}.accept({_map})
-    broadcast "varlist failed" if {-varl} is not 6
-    
-    # array
-    set {_pureadder} to lambda {_varl}: sum(...{_varl})
-    set {_val} to {_pureadder}.apply([1, 2, 3])
-    broadcast "array failed" if {_val} is not 6
-    
-    # failing real variable list
+    (consumer {_arg}: {_arg}.values().stream().forEach(consumer {_x}: add {_x} to {-functions::test::varl})).accept({_map})
+    broadcast "varlist failed" if {-functions::test::varl} is not 6
+
+    # Array
+    broadcast "array failed" if (function {_varl}: sum(...{_varl})).get([1, 2, 3]) is not 6
+
+    # Real variable list failure
     set {_test::*} to 1, 2 and 3
-    set {_realpureadder} to lambda {_varl::*}: sum({_test::*})
-    set {_val} to {_realpureadder}.apply(raw expression of {_test::*})
-    broadcast "unexpected: real variable list succeded" if {_val} is 6
+    broadcast "unexpected: real variable list succeded" if (function {_varl::*}: sum({_test::*})).get(raw expression of {_test::*}) is 6
     
+    broadcast "run supplier fail" if run lambda supplier: "yes" is not "yes"
+    
+    broadcast "run function fail" if run lambda function {_x}: {_x} with "test" is not "test"
