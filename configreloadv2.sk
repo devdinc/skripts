@@ -1,0 +1,147 @@
+# this is not meant to be a library, but this file works with itzg/minecraft-server-docker.
+# instead of restarting the docker container all of the time, this file uses image files associated with itzg's,
+# and syncs images.
+# this is not production friendly, but reliable in conditions where you need to dynamically change files.
+# and skreload command is the cherry on top i guess.
+
+# var: ${CFG_INTERPOLATED}
+
+import:
+    java.lang.ProcessBuilder
+    java.io.BufferedReader
+    java.io.BufferedWriter
+    java.io.InputStreamReader
+    java.io.File
+    java.io.FileReader
+    java.io.FileWriter
+    
+command /mkonlysetup:
+    permission: op
+    trigger:
+        set {_src} to new File("/image/scripts/start-setupMounts")
+        set {_dst} to new File("/data/start-onlySetupMounts")
+        
+        if {_src}.exists() is false:
+            send "Source script not found: %{_src}%" to sender
+            stop
+
+        # Readers / writers
+        set {_reader} to new BufferedReader(new FileReader({_src}))
+        set {_writer} to new BufferedWriter(new FileWriter({_dst}))
+
+        # Read first line
+        set {_line} to {_reader}.readLine()
+
+        while {_line} is set:
+            if {_line} starts with ". ":
+                {_line} contains "start-utils"
+                {_writer}.write(". ""/image/scripts/start-utils""")
+                {_writer}.newLine()
+                
+            # else if {_line} starts with ": ""${REPLACE_ENV_SUFFIXES":
+            #     {_writer}.write(": ""${REPLACE_ENV_SUFFIXES:=yml,yaml,txt,cfg,conf,properties,hjson,json,tml,toml,sk}""")
+
+            # Skip exec handoff
+            # else if {_line} starts with "exec ":
+            #    # do nothing (omit line)
+            #    set {_n} to 0
+
+            # Copy everything else verbatim
+            else:
+                {_writer}.write({_line})
+                {_writer}.newLine()
+
+            set {_line} to {_reader}.readLine()
+
+        {_reader}.close()
+        {_writer}.close()
+
+        # Make executable (chmod +x)
+        {_dst}.setExecutable(true, false)
+
+        send "start-onlySetupMounts created."
+
+
+command /syncimages:
+    permission: op
+    trigger:
+        copyconfig()
+        send "Image sync complete." to sender
+        
+function copyconfig():
+    set {_cmd} to "/data/start-onlySetupMounts"
+
+    set {_pb} to new ProcessBuilder({_cmd})
+    {_pb}.directory(new File("/image/scripts"))
+    {_pb}.redirectErrorStream(true)
+
+    set {_process} to {_pb}.start()
+
+    set {_reader} to new BufferedReader(new InputStreamReader({_process}.getInputStream()))
+
+    set {_line} to {_reader}.readLine()
+
+    # Loop until EOF (null)
+    while {_line} is set:
+        set {_line} to {_reader}.readLine()
+
+    {_process}.waitFor()
+        
+command /skreload <string>:
+    permission: op
+    trigger:
+        delete {-configreloadv2.sk::loaded}
+        set {_routine} to fluent routine lambda: copyconfig()
+        set {_arg} to arg-1
+        set {_sender} to sender 
+        # instead of using multiple contexts, and not being able to use skript well, we are going to do this
+        set {_routine} to  {_routine}.context(global context).run(runner: set {-configreloadv2.sk::loaded} to 1)
+        while {-configreloadv2.sk::loaded} is not set:
+            wait 1 tick
+            
+        send "Image sync complete." to {_sender}
+        execute {_sender} command "sk reload %{_arg}%"
+       
+        
+on tab complete of "/skreload":
+    set {_root} to new File("plugins/Skript/scripts/")
+    clear {_completions::*}
+
+    if {_root}.exists() is false:
+        stop
+
+    set {_input} to tab arg-1
+    if {_input} is not set:
+        set {_input} to ""
+
+    # Split path into directory + prefix
+    if {_input} contains "/":
+        set {_parts::*} to {_input} split at "/"
+        set {_prefix} to last element of {_parts::*}
+        remove last element of {_parts::*} from {_parts::*}
+
+        set {_path} to join {_parts::*} with "/"
+        set {_dir} to new File({_root}.getPath() + "/" + {_path})
+        set {_pathPrefix} to {_path} + "/"
+    else:
+        set {_dir} to {_root}
+        set {_prefix} to {_input}
+        set {_pathPrefix} to ""
+
+    if {_dir}.exists() is false:
+        stop
+
+    loop ...{_dir}.listFiles():
+        set {_file} to loop-value
+        set {_name} to {_file}.getName()
+
+        if {_name} does not start with {_prefix}:
+            continue
+
+        if {_file}.isDirectory():
+            add "%{_pathPrefix}%%{_name}%/" to {_completions::*}
+        else if {_file}.isFile():
+            add "%{_pathPrefix}%%{_name}%" to {_completions::*}
+
+    set tab completions for position 1 to {_completions::*}
+
