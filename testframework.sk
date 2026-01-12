@@ -1,254 +1,115 @@
-# =============================================================================
-# REQUIREMENTS
-# =============================================================================
-#
-# Skript
-# skript-reflect
-#
-# =============================================================================
-# SKRIPT TESTING FRAMEWORK DOCUMENTATION
-# =============================================================================
-#
-# This module provides a minimal, event-driven testing framework implemented
-# entirely in Skript. It enables definition, discovery, and execution of tests
-# using custom events, assertions, and failure handling.
-#
-# Tests are registered lazily and executed through a dedicated custom event,
-# allowing isolation, controlled execution flow, and early termination on
-# failure.
-#
-# -----------------------------------------------------------------------------
-# Core Concepts
-# -----------------------------------------------------------------------------
-#
-# - Each test is identified by a unique string name.
-# - Assertions and failures immediately abort the test execution.
-# - Tests are auto-discovered and may be executed individually or in bulk.
-#
-# -----------------------------------------------------------------------------
-# Defining a Test
-# -----------------------------------------------------------------------------
-#
-# Tests are defined by calling the custom event syntax:
-#
-#   test "<test name>":
-#       <test body>
-#
-# Example:
-#
-#   test "initial test 1":
-#       fail test with message "message 1" if {_none} is set
-#       assert true with "message 2": {_none} is not set
-#       assert false with "message 3": {_none} is set
-#       assert false with "message 4": {_none} is not set # failing
-#       broadcast "message 5" # not executed since previous assert failed.
-#
-# Notes:
-#   - Test execution stops immediately on failure.
-#   - Any code after a failure or failed assertion is not executed.
-#
-# -----------------------------------------------------------------------------
-# Running Tests
-# -----------------------------------------------------------------------------
-#
-# Effect: run [test][s] %strings%
-#
-# Syntax:
-#
-#   run test %strings%
-#   run tests %strings%
-#
-# Behavior:
-#   - Executes one or more named tests.
-#
-# Example:
-#
-#   run test "my test"
-#   run tests "test 1", "test 2"
-#
-# -----------------------------------------------------------------------------
-# Discovering Tests
-# -----------------------------------------------------------------------------
-#
-# Expression: all tests [([with]in|from) %-script%]
-#
-# Syntax:
-#
-#   all tests
-#   all tests from %script%
-#   all tests within %script%
-#
-# Behavior:
-#   - Returns all registered test names.
-#   - May be scoped globally or to a specific script.
-#
-# Examples:
-#
-#   set {_tests::*} to all tests
-#   set {_scriptTests::*} to all tests from current script
-#
-# Notes:
-#   - If the script expression is invalid or unset, {_none} is returned.
-#
-# -----------------------------------------------------------------------------
-# Automatic Execution on Load
-# -----------------------------------------------------------------------------
-#
-# On script load:
-#
-#   - A short delay is used to ensure all scripts are fully loaded.
-#   - All discovered tests are then executed.
-#
-# This ensures:
-#   - Complete test discovery across scripts.
-#   - Predictable execution order after initialization.
-#
-# -----------------------------------------------------------------------------
-# Assertions
-# -----------------------------------------------------------------------------
-#
-# Effect: assert true / assert false
-#
-# Syntax:
-#
-#   assert true [with [error] message %-string%]: <condition>
-#   assert false [with [error] message %-string%]: <condition>
-#
-# Behavior:
-#   - Parses the provided condition dynamically.
-#   - Evaluates it against the current event context.
-#
-# Failure Conditions:
-#   - assert true  → fails if condition evaluates to false
-#   - assert false → fails if condition evaluates to true
-#
-# On Failure:
-#   - A formatted failure message is sent to the console.
-#   - Test execution is immediately halted via a delayed effect.
-#
-# Example:
-#
-#   assert true: {_x} is set
-#   assert false with error message "unexpected value": {_y} is 5
-#
-# -----------------------------------------------------------------------------
-# Explicit Test Failure
-# -----------------------------------------------------------------------------
-#
-# Effect: fail test
-#
-# Syntax:
-#
-#   fail test [with [error] message %-string%]
-#
-# Behavior:
-#   - Immediately marks the current test as failed.
-#   - Sends a failure message to the console.
-#   - Aborts further execution of the test.
-#
-# Example:
-#
-#   fail test
-#   fail test with error message "precondition not met"
-#
-# -----------------------------------------------------------------------------
-# Failure Output Format
-# -----------------------------------------------------------------------------
-#
-# All failures are logged to the console using a consistent format:
-#
-#   [Skript] [TEST FAILURE] Test "<name>" failed <optional message>
-#
-# Or, for assertions:
-#
-#   [Skript] [TEST FAILURE]
-#   Test "<name>" with condition "<assertion>" failed <optional message>
-#
-# -----------------------------------------------------------------------------
-# Limitations
-# -----------------------------------------------------------------------------
-#
-# - Test execution is on main thread.
-# - Failures rely on delayed effects to halt execution.
-# - Assertions depend on runtime condition parsing.
-#
-# -----------------------------------------------------------------------------
-# Notes
-# -----------------------------------------------------------------------------
-#
-# - Test registration is implicit and automatic.
-# - Tests are uniquely scoped per script.
-# - This framework is intentionally minimal and non-intrusive.
-#
-# =============================================================================
+local effect testFail %string%[, %-string%]:
+    trigger:
+        set {_msg} to " %expr-2%" if expr-2 is set else ""
+        send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] %expr-1%%{_msg}%" to console
 
 event "skriptTest":
-    pattern: test %-string%
-    event-values: string
+    pattern: test %string%
+    event-values: string, boolean
     check:
-        if expr-1 is event-string:
-            continue
-        # a trick to load all events, we call with random uuid, and check if it is listened, since its not, we add listened expr-1
         set {-test.sk::tests::%current script%::%expr-1%} to "%expr-1%"
-        
-effect run [test][s] %strings%:
+        if "%current script%/%expr-1%" is event-string:
+            continue
+            
+on load:
+    delete {-test.sk::*}
+
+effect (1:|2:auto)run [test][s] %strings%:
     trigger:
-        set {_a::*} to expr-1
-        loop {_a::*}:
+        set {_tests::*} to expr-1
+        loop {_tests::*}:
+            delete {-test.sk::errors::%loop-value%} 
             set {_list::string} to loop-value
+            set {_list::boolean} to true if parse mark is 2 else false
             call custom event "skriptTest" with {_list::*}
-        
-expression all tests [([with]in|from) %-script%]:
+            if loop-value contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313":
+                add 1 to {_forgottenTestResults}
+                continue loop
+            add {-test.sk::errors::%loop-value%} to {_errors}
+        set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
+        if {_validTestAmount} is not 0:
+            send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_errors}%/%{_validTestAmount}% tests passed." to console
+
+expression all tests [with test name %-string%] [([with]in|from) %-script%]:
     parse:
-        set {_exprIsSet} to true if expr-1 is set else false
+        set {_scoped} to false if expr-2 is not set
         continue
+
     get:
-        if {_exprIsSet} is false:
+        if {_scoped} is false:
             loop indices of {-test.sk::tests::*}:
                 loop {-test.sk::tests::%loop-value%::*}:
-                    add loop-value-2 to {_r::*}
+                    if any:
+                        expr-1 is not set
+                        loop-value-2 is expr-1
+                    then:
+                        add "%loop-value-1%/%loop-value-2%" to {_r::*}
+
         else:
-            if expr-1 is not set: # its not a script
-                return {_none}
-            loop {-test.sk::tests::%expr-1%::*}:
-                add loop-value to {_r::*}
+            if expr-1 is not set:
+                loop {-test.sk::tests::%expr-2%::*}:
+                    add "%expr-2%/%loop-value%" to {_r::*}
+            else if {-test.sk::tests::%expr-2%::%expr-1%} is set:
+                add "%expr-2%/%expr-1%" to {_r::*}
+
         return {_r::*}
-    
+
 on load:
-    delete {-test.sk::errors}
-    wait 1 tick # to load all stuff
+    wait 1 tick
     run test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
     wait 1 tick
     set {_tests::*} to all tests
-    run {_tests::*}
-    send "[<gold>Skript<reset>] <yellow>%size of {_tests::*}-{-test.sk::errors}%/%size of {_tests::*}% &atests passed." to console 
-    
+    autorun {_tests::*}
+
 import:
     ch.njol.skript.lang.Condition
-    
-effect assert (1:|1:true|2:false) [with [[error] message] %-string%]\: <(.+)>:
-    usable in: 
+
+effect assert(1:|1: true|2: false)[ with [[error] message] %-string%]\: <(.+)>:
+    usable in:
         custom event "skriptTest"
     trigger:
-        set {_conditionRaw} to first element of regex-1
-        set {_condition} to Condition.parse({_conditionRaw}, "Can't understand this condition: " + {_conditionRaw})
-        # sadly .getNode().getLine() doesn't work because node is null
-        set {_isTrue} to {_condition}.check(event)
-        set {_message} to " with message: %expr-1%" if expr-1 is set else "."
-        if parse mark is 1:
-            {_isTrue} is false
-            send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] <yellow>Test ""%event.getEventValue("string")%"" with condition ""assert true: %{_conditionRaw}%""<reset> failed%{_message}%" to console
-            delay effect # a trick to stop execution, might create memory leaks, im not sure
-        else if {_isTrue} is true:
-            send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] <yellow>Test ""%event.getEventValue("string")%"" with condition ""assert false: %{_conditionRaw}%""<reset> failed%{_message}%" to console
-            add 1 to {-test.sk::errors}
-            delay effect
+        set {_raw} to first element of regex-1
+        set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
+        set {_ok} to {_cond}.check(event)
+        set {_label} to "assert true" if parse mark is 1 else "assert false"
+        set {_test} to event.getEventValue("string")
         
+        if all:
+            parse mark is 1
+            {_ok} is false
+        then:
+            set {_bool1} to true
+            
+        if all:
+            parse mark is 2
+            {_ok} is true
+        then:
+            set {_bool2} to true
+            
+        if any:
+            {_bool1} is true
+            {_bool2} is true
+        then:
+            testFail "Test ""%{_test}%"" with condition ""%{_label}%: %{_raw}%"" failed", expr-1
+            add 1 to {-test.sk::errors::%{_test}%}
+            delay effect
+
 effect fail test [with [[error] message] %-string%]:
     usable in: 
         custom event "skriptTest"
     trigger:
-        set {_message} to "with message: %expr-1%" if expr-1 is set else ""
-        send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] Test ""%event.getEventValue("string")%"" failed %{_message}%" to console
+        set {_test} to event.getEventValue("string")
+        testFail "Test ""%{_test}%"" failed", expr-1
+        add 1 to {-test.sk::errors::%{_test}%}
         delay effect
         
+effect stop auto [test] execution [here]:
+    usable in:
+        custom event "skriptTest"
+    trigger:
+        set {_bool} to event.getEventValue("boolean")
+        if {_bool} is true:
+            delay effect
+        
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 hidden test":
+    assert true: {_none} is not set
