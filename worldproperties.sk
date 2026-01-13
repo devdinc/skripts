@@ -1,0 +1,90 @@
+import:
+    org.bukkit.Bukkit
+    java.io.File
+    java.io.BufferedReader
+    java.io.FileReader
+
+function load_world_properties_from_folder(folder: text):
+    set {_file} to new File(Bukkit.getWorldContainer(), "%{_folder}%/world.properties")
+    if {_file}.exists() is false:
+        stop
+
+    set {_reader} to new BufferedReader(new FileReader({_file}))
+
+    while {_none} is not set:
+        set {_line} to {_reader}.readLine()
+        if {_line} is not set:
+            {_reader}.close()
+            stop
+
+        set {_line} to {_line}.trim()
+        if {_line} is "":
+            continue
+        if {_line}.startsWith("#"):
+            continue
+        if {_line} does not contain "=":
+            continue
+
+        set {_s::*} to split {_line} at "="
+        set {_key} to {_s::1}.trim()
+        set {_value} to {_s::2}.trim()
+
+        # Border center
+        if {_key} is "border_center":
+            set {_s2::*} to split {_value} at ","
+            set {_x} to {_s2::1}.trim()
+            set {_z} to {_s2::2}.trim()
+            set {-world.properties::%{_folder}%::border_center_x} to {_x} parsed as number
+            set {-world.properties::%{_folder}%::border_center_z} to {_z} parsed as number
+
+        # Border size
+        else if {_key} is "border_size":
+            set {-world.properties::%{_folder}%::border_size} to {_value} parsed as number
+
+        # Gamerules
+        else:
+            set {-world.properties::%{_folder}%::%{_key}%} to {_value}
+            add {_key} to {-world.properties::%{_folder}%::gamerules::*}
+
+on load:
+    clear {-world.properties::*}
+
+    set {_container} to Bukkit.getWorldContainer()
+    set {_folders::*} to ...{_container}.listFiles()
+
+    loop {_folders::*}:
+        if loop-value.isDirectory() is false:
+            continue
+
+        set {_levelDat} to new File(loop-value, "level.dat")
+        if {_levelDat}.exists() is false:
+            continue
+
+        set {_worldName} to loop-value.getName()
+        load_world_properties_from_folder({_worldName})
+        
+on load:
+    wait 1 tick
+    loop all worlds:
+        set {_world} to loop-value
+        set {_name} to name of {_world}
+
+        # Gamerules
+        loop {-world.properties::%{_name}%::gamerules::*}:
+            set {_rule} to loop-value-2
+            set {_value} to {-world.properties::%{_name}%::%{_rule}%}
+
+            if {_value} is "true" or "false":
+                set gamerule {_rule} parsed as gamerule of world "%{_world}%" to {_value} parsed as boolean
+            else:
+                set gamerule {_rule} parsed as gamerule of world "%{_world}%" to {_value} parsed as integer
+
+        # World border center
+        set {_border} to {_world}'s world border
+        if {-world.properties::%{_name}%::border_center_x} is set:
+            set {_border}'s world border center to location({-world.properties::%{_name}%::border_center_x},0,{-world.properties::%{_name}%::border_center_z},{_world})
+
+        # World border size
+        if {-world.properties::%{_name}%::border_size} is set:
+            set {_border}'s world border size to {-world.properties::%{_name}%::border_size}
+
