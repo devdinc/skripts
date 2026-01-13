@@ -53,12 +53,12 @@ effect (1:|2:auto)run [test][s] %strings%:
             then:
                 add 1 to {_forgottenTestResults}
                 continue loop
-            add 1 to {_testFails} if {-test.sk::errors::%loop-value%} is greater than 1
+            add 1 to {_testFails} if {-test.sk::errors::%loop-value%} is greater than 0
         set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
         if {_validTestAmount} is not 0:
             send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed." to console
         else if size of {_alltests::*} is greater than 0: # skipping if there is no initial hidden test 
-            send "[<gold>Skript<reset>] <yellow>no tests found." to console
+            send "[<gold>Skript<reset>] <yellow>No tests found." to console
 
 on load:
     wait 1 tick
@@ -77,7 +77,7 @@ effect (3:|4:(no|without) (halt[ing]|fail[(-| )]safe|abort[ing])) assert(1:|1: t
         set {_raw} to first element of regex-1
         set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
         set {_ok} to {_cond}.check(event)
-        set {_label} to "assert true" if parse mark is 1 else "assert false"
+        set {_label} to "assert true" if parse tags contains "1" else "assert false"
         set {_test} to event.getEventValue("string")
         if all:
             parse tags contains "1"
