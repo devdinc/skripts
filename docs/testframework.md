@@ -143,20 +143,28 @@ Optional non-halting mode:
 without halting assert true: <condition>
 ```
 
----
+Optional error message control:
 
-### Semantics
+```skript
+assert true with error message "<message>": <condition>
+assert true with no error message: <condition>
+```
 
-* `assert true` fails if the condition evaluates to `false`
-* `assert false` fails if the condition evaluates to `true`
-* Conditions are parsed dynamically using Skript’s `Condition` parser
+### Error Message Semantics
 
-On failure:
+* `with error message "<message>"` – emits a formatted failure message to the console when the assertion fails
+* `with no error message` – suppresses console output entirely
 
-* The test’s error counter is incremented
-* A formatted failure message may be sent to the console
-* By default, the test **halts immediately**
-* If `without halting` is used, execution continues
+In both cases:
+
+* The failure is still recorded internally
+* The test still halts unless `without halting` is specified
+
+This allows assertions to be used for:
+
+* Silent internal invariants
+* Meta-tests that validate the framework itself
+* Failure counting without polluting console output
 
 Assertions are only valid inside the `skriptTest` event context.
 
