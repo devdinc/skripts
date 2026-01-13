@@ -14,22 +14,6 @@ event "skriptTest":
 on load:
     delete {-test.sk::*}
 
-effect (1:|2:auto)run [test][s] %strings%:
-    trigger:
-        set {_tests::*} to expr-1
-        loop {_tests::*}:
-            delete {-test.sk::errors::%loop-value%} 
-            set {_list::string} to loop-value
-            set {_list::boolean} to true if parse mark is 2 else false
-            call custom event "skriptTest" with {_list::*}
-            if loop-value contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313":
-                add 1 to {_forgottenTestResults}
-                continue loop
-            add {-test.sk::errors::%loop-value%} to {_errors}
-        set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
-        if {_validTestAmount} is not 0:
-            send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_errors}%/%{_validTestAmount}% tests passed." to console
-
 expression all tests [with test name %-string%] [([with]in|from) %-script%]:
     parse:
         set {_scoped} to false if expr-2 is not set
@@ -53,6 +37,28 @@ expression all tests [with test name %-string%] [([with]in|from) %-script%]:
                 add "%expr-2%/%expr-1%" to {_r::*}
 
         return {_r::*}
+        
+effect (1:|2:auto)run [test][s] %strings%:
+    trigger:
+        set {_tests::*} to expr-1
+        set {_alltests::*} to all tests
+        loop {_tests::*}:
+            delete {-test.sk::errors::%loop-value%} 
+            set {_list::string} to loop-value
+            set {_list::boolean} to true if parse mark is 2 else false
+            call custom event "skriptTest" with {_list::*}
+            if any:
+                loop-value contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+                {_alltests::*} does not contain loop-value
+            then:
+                add 1 to {_forgottenTestResults}
+                continue loop
+            add 1 to {_testFails} if {-test.sk::errors::%loop-value%} is greater than 1
+        set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
+        if {_validTestAmount} is not 0:
+            send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed." to console
+        else if size of {_alltests::*} is greater than 0: # skipping if there is no initial hidden test 
+            send "[<gold>Skript<reset>] <yellow>no tests found." to console
 
 on load:
     wait 1 tick
