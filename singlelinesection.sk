@@ -1,0 +1,110 @@
+import:
+    ch.njol.skript.lang.parser.ParserInstance
+    ch.njol.skript.lang.ExpressionList
+    ch.njol.skript.lang.Variable
+    ch.njol.skript.lang.Trigger
+    ch.njol.skript.lang.SectionSkriptEvent
+    ch.njol.skript.ScriptLoader
+    ch.njol.skript.config.Config
+    java.io.ByteArrayInputStream
+    com.btk5h.skriptmirror.skript.reflect.sections.SectionEvent
+    com.btk5h.skriptmirror.skript.reflect.sections.Section
+    com.btk5h.skriptmirror.util.SkriptReflection
+    java.util.ArrayList
+    java.util.HashMap
+    org.skriptlang.reflect.java.elements.structures.StructImport
+    ch.njol.skript.log.SkriptLogger
+
+local function extractArgs(vars: object) :: objects:
+    if {_vars} is instance of ExpressionList:
+        loop ...{_vars}.getExpressions():
+            add loop-value to {_ret::*}
+    else if {_vars} is instance of Variable:
+        add {_vars} to {_ret::*}
+    return {_ret::*}
+    
+local function extractRuntimeArgs(vars: objects) :: objects:
+    loop {_vars::*}:
+        set {_vars} to loop-value
+        if {_vars} is instance of Variable:
+            add {_vars} to {_ret::*}
+    return {_ret::*}
+    
+expression compile line %string% with %object% (1:|2:noreturn) in %script%:    
+    get:    
+        set {_section.sk::single::parser} to ParserInstance.get()
+        set {_section.sk::single::parser}.[ParserInstance]isActive to true
+        set {_section.sk::single::parserBackup} to {_section.sk::single::parser}.backup()  
+        set {_section.sk::single::parser}.[ParserInstance]isActive to false
+        {_section.sk::single::parser}.reset()  
+          
+        set {_section.sk::single::code} to "%expr-1%"  
+        set {_section.sk::single::event} to expr-2  
+        set {_section.sk::single::bais} to new ByteArrayInputStream({_section.sk::single::code}.getBytes())  
+        set {_section.sk::single::name} to "section"  
+        
+        set {_section.sk::single::config} to new Config({_section.sk::single::bais},"compiled single line for single line section: %expr-1%",true,false,":")  
+        set {_section.sk::single::node} to {_section.sk::single::config}.getMainNode()  
+        
+        # a hack to use java calls
+        set {_section.sk::single::imports} to StructImport.[StructImport]imports.get(expr-3)
+        set {_section.sk::single::names} to {_section.sk::single::imports}.keySet()
+        set {_section.sk::single::importsLocal} to StructImport.[StructImport]imports.getOrDefault(null, new HashMap())
+        loop ...{_section.sk::single::names}:
+            {_section.sk::single::importsLocal}.containsKey(loop-value) is false
+            set {_section.sk::single::javatype} to {_section.sk::single::imports}.get(loop-value)
+            # simulating effect command !import <import>
+            if loop-value is {_section.sk::single::javatype}.getSimpleName():
+                StructImport.registerImport("%{_section.sk::single::javatype}%", null) 
+            else:
+                StructImport.registerImport("%{_section.sk::single::javatype}% as %loop-value%", null) 
+        
+        {_section.sk::single::parser}.setCurrentEvent({_section.sk::single::name}, SectionEvent.class)  
+        {_section.sk::single::parser}.setCurrentStructure({_section.sk::single::event})  
+  
+        set {_section.sk::single::items} to ScriptLoader.loadItems({_section.sk::single::node})  
+  
+        {_section.sk::single::parser}.restoreBackup({_section.sk::single::parserBackup})  
+        return new Trigger(current script, {_section.sk::single::name}, {_section.sk::single::event}, {_section.sk::single::items})
+
+
+expression [new] [single] line section %string%[ with (1:|2:runtime) [arg[ument]s [variables]] %-objects%][in %-script%]:
+    return type: section
+    parse:
+        if expr-3 is not set:
+            set {_section.sk::single::origin} to SkriptLogger.getNode()
+            set {_section.sk::single::script} to script ({_section.sk::single::origin}.getConfig().getFileName())
+        continue
+    get:
+        if {_section.sk::single::script} is not set:
+            set {_section.sk::single::script} to expr-3
+        if parse mark is 2:
+            set {_section.sk::single::test::*} to expr-2
+            set {_section.sk::single::args::*} to extractRuntimeArgs({_section.sk::single::test::*})
+        else:
+            set {_section.sk::single::test} to raw expression of expr-2
+            set {_section.sk::single::args::*} to extractArgs({_section.sk::single::test})
+            
+        set {_section.sk::single::code} to expr-1
+        if {_section.sk::single::code} is not set:
+            return {_none}
+
+        # Compile the line into a trigger
+        set {_section.sk::single::name} to "section"
+
+            
+        set {_section.sk::single::event} to new SectionSkriptEvent({_section.sk::single::name}, null)
+        set {_section.sk::single::trigger} to compile line {_section.sk::single::code} with {_section.sk::single::event} in {_section.sk::single::script}
+
+        if {_section.sk::single::trigger} is not set:
+            return {_none}
+
+        # Create and return Section wrapper
+        set {_section.sk::single::list} to new ArrayList()
+        loop {_section.sk::single::args::*}:
+            {_section.sk::single::list}.add(loop-value)
+            
+        set {_section.sk::single::locals} to SkriptReflection.getLocals(event)
+        set {_section.sk::single::variableMap} to SkriptReflection.copyLocals({_section.sk::single::locals})
+        set {_section.sk::single::section} to new Section({_section.sk::single::trigger}, {_section.sk::single::variableMap}, {_section.sk::single::list})
+        return {_section.sk::single::section}
