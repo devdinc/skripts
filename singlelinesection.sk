@@ -49,6 +49,8 @@ expression compile line %string% with %object% (1:|2:noreturn) in %script%:
         
         # a hack to use java calls
         set {_section.sk::single::imports} to StructImport.[StructImport]imports.get(expr-3)
+        if {_section.sk::single::imports} is not set:
+            set {_section.sk::single::imports} to new HashMap()
         set {_section.sk::single::importsLocal} to StructImport.[StructImport]imports.getOrDefault(null, new HashMap())
         set {_section.sk::single::keys} to new HashSet({_section.sk::single::imports}.keySet())
         {_section.sk::single::keys}.removeAll({_section.sk::single::importsLocal}.keySet())
