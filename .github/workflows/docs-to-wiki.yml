@@ -50,6 +50,7 @@ jobs:
               done >> _Sidebar.md
 
       - name: Commit and push if changed
+        working-directory: wiki
         run: |
           cd wiki
           git config user.name "github-actions"
