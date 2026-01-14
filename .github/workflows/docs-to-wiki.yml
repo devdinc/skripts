@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - create-docs-to-wiki-ci
     paths:
       - "docs/**"
   workflow_dispatch:
@@ -24,33 +23,31 @@ jobs:
         run: |
           git clone https://github.com/${{ github.repository }}.wiki.git wiki
 
-      - name: Sync docs to wiki
+      - name: Sync docs to wiki (preserve wiki-only pages)
         run: |
-          rsync -av --delete docs/ wiki/
+          rsync -av --delete \
+            --exclude='Home.md' \
+            --exclude='_Sidebar.md' \
+            docs/ wiki/
 
       - name: Generate hierarchical Wiki Sidebar
         run: |
           cd wiki
-
           echo "## Documentation" > _Sidebar.md
           echo >> _Sidebar.md
 
           find . -name "*.md" \
             ! -name "_Sidebar.md" \
             ! -name "Home.md" \
-            | sed 's|^\./||' \
-            | sort \
-            | awk -F/ '
-              {
-                indent = ""
-                for (i = 1; i < NF; i++) {
-                  indent = indent "  "
-                }
-                page = $0
-                sub(/\.md$/, "", page)
-                printf "%s- [[%s]]\n", indent, page
-              }
-            ' >> _Sidebar.md
+            -print0 \
+            | sort -z \
+            | while IFS= read -r -d '' file; do
+                file="${file#./}"
+                depth=$(echo "$file" | tr -cd '/' | wc -c)
+                indent=$(printf '  %.0s' $(seq 1 "$depth"))
+                page="${file%.md}"
+                echo "${indent}- [[${page}]]"
+              done >> _Sidebar.md
 
       - name: Commit and push if changed
         run: |
