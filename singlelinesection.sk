@@ -12,6 +12,7 @@ import:
     com.btk5h.skriptmirror.util.SkriptReflection
     java.util.ArrayList
     java.util.HashMap
+    java.util.HashSet
     org.skriptlang.reflect.java.elements.structures.StructImport
     ch.njol.skript.log.SkriptLogger
 
@@ -48,13 +49,14 @@ expression compile line %string% with %object% (1:|2:noreturn) in %script%:
         
         # a hack to use java calls
         set {_section.sk::single::imports} to StructImport.[StructImport]imports.get(expr-3)
-        set {_section.sk::single::names} to {_section.sk::single::imports}.keySet()
         set {_section.sk::single::importsLocal} to StructImport.[StructImport]imports.getOrDefault(null, new HashMap())
-        loop ...{_section.sk::single::names}:
-            {_section.sk::single::importsLocal}.containsKey(loop-value) is false
+        set {_section.sk::single::keys} to new HashSet({_section.sk::single::imports}.keySet())
+        {_section.sk::single::keys}.removeAll({_section.sk::single::importsLocal}.keySet())
+        loop ...{_section.sk::single::keys}:
             set {_section.sk::single::javatype} to {_section.sk::single::imports}.get(loop-value)
+            set {_section.sk::single::javatypeSimpleName} to last element of split "%{_section.sk::single::javatype}%" at "."
             # simulating effect command !import <import>
-            if loop-value is {_section.sk::single::javatype}.getSimpleName():
+            if loop-value is {_section.sk::single::javatypeSimpleName}:
                 StructImport.registerImport("%{_section.sk::single::javatype}%", null) 
             else:
                 StructImport.registerImport("%{_section.sk::single::javatype}% as %loop-value%", null) 
