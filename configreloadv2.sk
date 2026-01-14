@@ -19,7 +19,7 @@ command /mkonlysetup:
     permission: op
     trigger:
         set {_src} to new File("/image/scripts/start-setupMounts")
-        set {_dst} to new File("/data/start-onlySetupMounts")
+        set {_dst} to new File("/data/docker/start-onlySetupMounts")
         
         if {_src}.exists() is false:
             send "Source script not found: %{_src}%" to sender
@@ -69,7 +69,7 @@ command /syncimages:
         send "Image sync complete." to sender
         
 function copyconfig():
-    set {_cmd} to "/data/start-onlySetupMounts"
+    set {_cmd} to "/data/docker/start-onlySetupMounts"
 
     set {_pb} to new ProcessBuilder({_cmd})
     {_pb}.directory(new File("/image/scripts"))
