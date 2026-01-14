@@ -1,0 +1,63 @@
+name: Sync Docs to Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+
+      - name: Clone wiki repository
+        run: |
+          git clone https://github.com/${{ github.repository }}.wiki.git wiki
+
+      - name: Sync docs to wiki
+        run: |
+          rsync -av --delete docs/ wiki/
+
+      - name: Generate hierarchical Wiki Sidebar
+        run: |
+          cd wiki
+
+          echo "## Documentation" > _Sidebar.md
+          echo >> _Sidebar.md
+
+          find . -name "*.md" \
+            ! -name "_Sidebar.md" \
+            ! -name "Home.md" \
+            | sed 's|^\./||' \
+            | sort \
+            | awk -F/ '
+              {
+                indent = ""
+                for (i = 1; i < NF; i++) {
+                  indent = indent "  "
+                }
+                page = $0
+                sub(/\.md$/, "", page)
+                printf "%s- [[%s]]\n", indent, page
+              }
+            ' >> _Sidebar.md
+
+      - name: Commit and push if changed
+        run: |
+          cd wiki
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Sync docs to wiki"
+          git push
