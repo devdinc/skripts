@@ -1,14 +1,15 @@
+using reflection
+
 import:
     ch.njol.skript.lang.parser.ParserInstance
+    org.bukkit.Bukkit
+    ch.njol.skript.test.utils.TestOfflinePlayer
+    ch.njol.skript.lang.Condition
 
 local effect testFail %string%[, %-string%]:
     trigger:
         set {_msg} to " %expr-2%" if expr-2 is set else ""
         send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] %expr-1%%{_msg}%" to console
-
-local effect ...:
-    trigger:
-        set {_none} to {_anothernone}
 
 event "skriptTest":
     pattern: test %string% [when <(.+)>]
@@ -24,9 +25,6 @@ event "skriptTest":
             if {_cond} is set:
                 set {_ok} to {_cond}.check(event)
             continue if {_ok} is true
-            
-on load:
-    delete {-test.sk::*}
 
 plural expression all tests [with test name %-string%] [([with]in|from) %-script%]:
     return type: strings
@@ -76,14 +74,15 @@ effect (1:|2:auto)run [test][s] %strings%:
             send "[<gold>Skript<reset>] <yellow>No tests found." to console
 
 on load:
+    delete {-test.sk::*}
+    set {_block} to test-block's type
     wait 1 tick
     run test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
     wait 1 tick
     set {_tests::*} to all tests
     autorun {_tests::*}
-
-import:
-    ch.njol.skript.lang.Condition
+    set test-block to {_block}
+    broadcast "<red>Test block is permanent!" if test-block is not {_block}
 
 effect:
     patterns:
@@ -154,14 +153,14 @@ effect stop auto [test] execution [here]:
             
 expression [event(-| )]test:
     return type: string
-    usable in:
-        custom event "skriptTest"
+#    usable in:
+#        custom event "skriptTest"
     get:
         return event.getEventValue("string")
         
 condition %string% (1:is|2:is not|2:isn't) autorun:
-    usable in:
-        custom event "skriptTest"
+    # usable in:
+    #    custom event "skriptTest"
     check:
         set {_bool} to event.getEventValue("boolean")
         if {_bool} is true:
@@ -171,13 +170,43 @@ condition %string% (1:is|2:is not|2:isn't) autorun:
             parse mark is 2
             continue
             
+### this section is experimental.
+
+import:
+    ch.njol.skript.ScriptLoader
+    ch.njol.skript.log.SkriptLogger
+            
 condition parse:
+    parse:
+        set {_parser} to ParserInstance.get()
+        set {_parseSection} to {_parser}.getNode()
+        set {_parseBackup} to {_parser}.backup()
+        # nodes are not fully loaded here yet
+        continue
     usable in:
         custom event "skriptTest"
     check:
-        ...
-        # TODO last parse logs can be added by retaining logs, im not sure when to start and stop retaining them tho.
+        {_parser}.restoreBackup({_parseBackup})
+        set {_logger} to SkriptLogger.startRetainingLog()
+        ScriptLoader.loadItems({_parseSection})
+        loop ...{_logger}.getLog():
+            add loop-value.getMessage() to {_logs::*}
+        set {-test.sk::latestLogs::*} to {_logs::*}
+        {_logger}.close()
+        {_parser}.reset()
         
+local effect no errors\: <.+>:
+    trigger:
+        stop
+
+plural expression latest parse logs:
+    usable in:
+        custom event "skriptTest"
+    get:
+        return {-test.sk::latestLogs::*}
+
+# ----
+
 plural expression test errors[ for [test[s]] %-strings%]:
     return type: strings
     get:
@@ -189,10 +218,30 @@ plural expression test errors[ for [test[s]] %-strings%]:
                 set {_test} to loop-value
                 add {-test.sk::errors::%{_test}%::*} to {_r::*}
             return {_r::*}
-    
-# TODO add skript test suite syntax documentation and tests for this
-# last parse logs
-# test block/world/location/pig/entity/(player?)
+
+expression [the] test(-| )world:
+    return type: world
+    get:
+        return Bukkit.getWorlds().get(0)
+
+expression [the] test(-| )location:
+    return type: location
+    get:
+        return test-world.getSpawnLocation().add(10, 1, 0)
+
+expression [the] test(-| )block:
+    return type: block
+    get:
+        return test-location.getBlock()
+    set:
+        set block at test-location to change value
+        
+expression [the] test(-| )offline[-| ]player:
+    return type: offlineplayer
+    get:
+        set {_instance} to new TestOfflinePlayer()
+        # TestOfflinePlayer.[TestOfflinePlayer]PLAYER_PROFILE.setProperty(new ProfileProperty("textures", "ewogICJ0aW1lc3RhbXAiIDogMTc0NzQyOTg2MTQwOCwKICAicHJvZmlsZUlkIiA6ICI2OWUzNzAyNjJjN2Q0MjU1YWM3NjliMTNhNWZlOGY3NCIsCiAgInByb2ZpbGVOYW1lIiA6ICJTYWh2ZGUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTE2MGFiZWVhNDI1YzZmODMyYjc0NmE0NTQ0YzVmYjlhOTgxYjAyZTFiZDg1ZmVhNWM3ZWY4MzFiZGM4NzRmMyIKICAgIH0KICB9Cn0="));
+        return {_instance}
 
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
     assert true: {_none} is not set
@@ -239,6 +288,9 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
 
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
     fail test
+    
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag" when event-test is not autorun:
+    fail test
 
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
     stop auto test execution here
@@ -261,4 +313,20 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests B":
 
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
     assert true: event-test is event-string
+    
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary":
+    test block is chest:
+        set test-block to trapped chest
+    else if test block is trapped chest:
+        set test-block to chest
+    else:
+        set test-block to ender chest
+        
+    # test is continued at on load end
+    
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
+    parse:
+        no errors: abc # just an internal stuff to make sure test.sk loads without errors
+    assert latest parse logs contains "Can't understand this condition/effect: no errors: abc"
+
 
