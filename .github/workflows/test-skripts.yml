@@ -1,4 +1,5 @@
 name: Run tests
+# TODO disable skript default tests, copy main files to test folder while files inside has now a suffix of .test.sk instead of .sk
 
 on:
   push:
