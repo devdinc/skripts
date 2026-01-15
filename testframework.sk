@@ -1,20 +1,35 @@
+import:
+    ch.njol.skript.lang.parser.ParserInstance
+
 local effect testFail %string%[, %-string%]:
     trigger:
         set {_msg} to " %expr-2%" if expr-2 is set else ""
         send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] %expr-1%%{_msg}%" to console
 
+local effect ...:
+    trigger:
+        set {_none} to {_anothernone}
+
 event "skriptTest":
-    pattern: test %string%
+    pattern: test %string% [when <(.+)>]
     event-values: string, boolean
     check:
+        set {_ok} to true
         set {-test.sk::tests::%current script%::%expr-1%} to "%expr-1%"
         if "%current script%/%expr-1%" is event-string:
-            continue
+            set {_raw} to first element of regex-1
+            if {_raw} is set:
+                set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
+        
+            if {_cond} is set:
+                set {_ok} to {_cond}.check(event)
+            continue if {_ok} is true
             
 on load:
     delete {-test.sk::*}
 
-expression all tests [with test name %-string%] [([with]in|from) %-script%]:
+plural expression all tests [with test name %-string%] [([with]in|from) %-script%]:
+    return type: strings
     parse:
         set {_scoped} to false if expr-2 is not set
         continue
@@ -43,7 +58,7 @@ effect (1:|2:auto)run [test][s] %strings%:
         set {_tests::*} to expr-1
         set {_alltests::*} to all tests
         loop {_tests::*}:
-            delete {-test.sk::errors::%loop-value%} 
+            delete {-test.sk::errors::%loop-value%::*} 
             set {_list::string} to loop-value
             set {_list::boolean} to true if parse mark is 2 else false
             call custom event "skriptTest" with {_list::*}
@@ -53,7 +68,7 @@ effect (1:|2:auto)run [test][s] %strings%:
             then:
                 add 1 to {_forgottenTestResults}
                 continue loop
-            add 1 to {_testFails} if {-test.sk::errors::%loop-value%} is greater than 0
+            add 1 to {_testFails} if size of {-test.sk::errors::%loop-value%::*} is greater than 0
         set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
         if {_validTestAmount} is not 0:
             send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed." to console
@@ -70,13 +85,30 @@ on load:
 import:
     ch.njol.skript.lang.Condition
 
-effect (3:|4:(no|without) (halt[ing]|fail[(-| )]safe|abort[ing])) assert(1:|1: true|2: false)[ with (6:|5:no )[[error] message][ %-string%]]\: <(.+)>:
+effect:
+    patterns:
+        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert(1:|1: true|2: false)[ with (6:|5:no )[[error] message][ %-string%]]\: <(.+)>
+        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert <(.+)> (1:|2:to fail)[ with (6:|5:no )[[error][ message]][ %-string%]]
     usable in:
         custom event "skriptTest"
-    trigger:
+    parse:
         set {_raw} to first element of regex-1
+        
+        set {_parser} to ParserInstance.get()
+        set {_parser}.[ParserInstance]isActive to true
+        set {_backup} to {_parser}.backup()  
+        
+        {_parser}.setCurrentScript(current script)
+        {_parser}.setCurrentEvent("assert condition", (custom event "skriptTest").getClass())
+        
         set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
+        
+        set {_parser}.[ParserInstance]isActive to false
+        {_parser}.restoreBackup({_backup})  
+        continue
+    trigger:
         set {_ok} to {_cond}.check(event)
+        
         set {_label} to "assert true" if parse tags contains "1" else "assert false"
         set {_test} to event.getEventValue("string")
         if all:
@@ -95,20 +127,20 @@ effect (3:|4:(no|without) (halt[ing]|fail[(-| )]safe|abort[ing])) assert(1:|1: t
             {_bool1} is true
             {_bool2} is true
         then:
-            if parse tags contains "6":
+            if parse tags does not contain "5":
                 testFail "Test ""%{_test}%"" with condition ""%{_label}%: %{_raw}%"" failed", expr-1
-            add 1 to {-test.sk::errors::%{_test}%}
+            add "%expr-1%" to {-test.sk::errors::%{_test}%::*}
             if parse tags contains "3":
                 delay effect
 
-effect (3:|4:(no|without) (halt[ing]|fail[(-| )]safe|abort[ing])) fail test[ with (6:|5:no )[[error] message][ %-string%]]:
+effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail test[ with (6:|5:no )[[error] message][ %-string%]]:
     usable in: 
         custom event "skriptTest"
     trigger:
         set {_test} to event.getEventValue("string")
-        if parse tags contains "6":
+        if parse tags does not contain "5":
             testFail "Test ""%{_test}%"" failed", expr-1
-        add 1 to {-test.sk::errors::%{_test}%}
+        add "%expr-1%" to {-test.sk::errors::%{_test}%::*}
         if parse tags contains "3":
             delay effect
         
@@ -119,12 +151,114 @@ effect stop auto [test] execution [here]:
         set {_bool} to event.getEventValue("boolean")
         if {_bool} is true:
             delay effect
+            
+expression [event(-| )]test:
+    return type: string
+    usable in:
+        custom event "skriptTest"
+    get:
+        return event.getEventValue("string")
         
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 hidden test":
-    set {_test} to event-string # contains folder so we are fine
-    without halting assert true with no error message: {_none} is set 
-    without halting assert true with no error message: {_none} is set 
-    without halting assert true with no error message: {-test.sk::errors::%{_test}%} is 2
-    broadcast "<red>Something very wrong occurred with test framework(error no 1)" if {-test.sk::errors::%{_test}%} is 3
-    assert true with no error message: {_none} is set 
-    broadcast "<red>Something very wrong occurred with test framework(error no 2)"
+condition %string% (1:is|2:is not|2:isn't) autorun:
+    usable in:
+        custom event "skriptTest"
+    check:
+        set {_bool} to event.getEventValue("boolean")
+        if {_bool} is true:
+            parse mark is 1
+            continue
+        else:
+            parse mark is 2
+            continue
+            
+condition parse:
+    usable in:
+        custom event "skriptTest"
+    check:
+        ...
+        # TODO last parse logs can be added by retaining logs, im not sure when to start and stop retaining them tho.
+        
+plural expression test errors[ for [test[s]] %-strings%]:
+    return type: strings
+    get:
+        if expr-1 is not set:
+            set {_test} to event.getEventValue("string")
+            return {-test.sk::errors::%{_test}%::*}
+        else:
+            loop ...expr-1:
+                set {_test} to loop-value
+                add {-test.sk::errors::%{_test}%::*} to {_r::*}
+            return {_r::*}
+    
+# TODO add skript test suite syntax documentation and tests for this
+# last parse logs
+# test block/world/location/pig/entity/(player?)
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
+    assert true: {_none} is not set
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert false passes":
+    assert false: {_none} is set
+    
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 framework internal consistency":
+    without halting assert true: size of all tests > 0
+    without halting assert true: "%current script%" is set
+    assert true: size of test errors is 0
+
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true failure is recorded":
+    without halting assert true with no error message: {_none} is set
+    assert true: size of test errors is 1
+    
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert error message is stored":
+    without halting assert true with no error message "msg1": {_none} is set
+    assert true with message "check failed": test errors contains "msg1"
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 no error message produces empty suffix":
+    without halting assert true with no error message: {_none} is set
+    assert true: size of test errors is 1
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 halting assert stops execution":
+    assert true with no error message: {_none} is set
+    broadcast "<red>ERROR: this should never execute"
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 without halting continues execution":
+    without halting assert true with no error message: {_none} is set
+    assert true: {_none} is not set
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test records error":
+    without halting fail test with no error message
+    assert true: size of test errors is 1
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test halts by default":
+    fail test with no error message
+    broadcast "<red>ERROR: fail test did not halt"
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
+    assert true: event-test is autorun
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
+    fail test
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
+    stop auto test execution here
+    broadcast "<red>ERROR: auto execution not stopped"
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test":
+    set {_all::*} to all tests
+    assert true: {_all::*} contains "%current script%/f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests scoped by script":
+    set {_all::*} to all tests within current script
+    assert true: size of {_all::*} > 0
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests A":
+    without halting assert true with no message: {_none} is set
+    assert true: size of test errors is 1
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests B":
+    assert true: size of test errors is 0
+
+test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
+    assert true: event-test is event-string
+
