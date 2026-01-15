@@ -189,6 +189,7 @@ condition parse:
         {_parser}.restoreBackup({_parseBackup})
         set {_logger} to SkriptLogger.startRetainingLog()
         ScriptLoader.loadItems({_parseSection})
+        clear {-test.sk::latestLogs::*}
         loop ...{_logger}.getLog():
             add loop-value.getMessage() to {_logs::*}
         set {-test.sk::latestLogs::*} to {_logs::*}
@@ -199,7 +200,7 @@ local effect no errors\: <.+>:
     trigger:
         stop
 
-plural expression latest parse logs:
+plural expression last parse logs:
     usable in:
         custom event "skriptTest"
     get:
@@ -327,6 +328,4 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary":
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
     parse:
         no errors: abc # just an internal stuff to make sure test.sk loads without errors
-    assert latest parse logs contains "Can't understand this condition/effect: no errors: abc"
-
-
+    assert last parse logs contains "Can't understand this condition/effect: no errors: abc"
