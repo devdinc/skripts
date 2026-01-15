@@ -31,5 +31,5 @@ If you are unsure whether a proposed change would be implemented, please create 
 
 If you encounter errors such as `Can't understand this expression`, the issue is most likely related to load order.
 
-Skript loads files alphabetically, with folders being prioritized. To control load order, prefix the used Skript with a folder name or a character such as `0_` or `!` 
-(e.g !testframework.sk)
+Skript loads files alphabetically, with folders being prioritized. To control load order, prefix the Skript file with a folder or a character such as `0_` or `!`
+(e.g., `!testframework.sk`)
