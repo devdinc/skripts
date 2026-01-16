@@ -35,7 +35,17 @@ jobs:
           mkdir -p build/libs
           curl -L -o build/libs/skript-reflect.jar \
             https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.1/skript-reflect-2.6.1.jar
-
+            
+      - name: Download Routines from JitPack
+        run: |
+          mkdir -p build/libs
+      
+          curl -L --fail -o build/libs/routines-core.jar \
+            https://jitpack.io/com/github/devdinc/routines/routines-core/v2.2.1/routines-core-v2.2.1.jar
+      
+          curl -L --fail -o build/libs/routines-paper.jar \
+            https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
+            
       - name: Prepare scripts
         run: |
           mkdir -p tests/scripts
