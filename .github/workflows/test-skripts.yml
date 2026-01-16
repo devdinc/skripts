@@ -28,7 +28,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Pre-create plugin directory
-        run: mkdir -p build/libs
+        run: |
+          mkdir -p build/libs
+          mkdir -p build/libs/skript-reflect
 
       - name: Download Skript-Reflect
         run: |
