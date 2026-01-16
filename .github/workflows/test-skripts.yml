@@ -40,12 +40,13 @@ jobs:
         run: |
           mkdir -p build/libs
       
-          curl -L --fail -o build/libs/routines-core.jar \
+          curl -L --fail -o build/libs/skript-reflect/routines-core.jar \
             https://jitpack.io/com/github/devdinc/routines/routines-core/v2.2.1/routines-core-v2.2.1.jar
       
-          curl -L --fail -o build/libs/routines-paper.jar \
+          curl -L --fail -o build/libs/skript-reflect/routines-paper.jar \
             https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
-      # Disable pdc for now  
+      # Disable pdc for now, i want to remove skbee req
+      # Disable config reload
       - name: Prepare scripts
         run: |
           mkdir -p tests/scripts
@@ -53,6 +54,7 @@ jobs:
           mv tests/scripts/libs/singlelinesection.sk tests/scripts/libs/0_singlelinesection.sk
           mv tests/scripts/utils/testframework.sk tests/scripts/utils/0_testframework.sk
           rm -f tests/scripts/libs/pdc.sk
+          rm -f tests/scripts/utils/configreloadv2.sk
 
       - name: Run tests
         uses: SkriptLang/skript-test-action@v1.2
