@@ -1,5 +1,4 @@
 name: Run tests
-# disable testframework.sk if it aint workin
 
 on:
   workflow_dispatch:
@@ -54,9 +53,10 @@ jobs:
           mkdir -p tests/scripts
           rsync -av scripts/ tests/scripts/
           mv tests/scripts/libs/singlelinesection.sk tests/scripts/libs/0_singlelinesection.sk
-          mv tests/scripts/utils/testframework.sk tests/scripts/utils/0_testframework.sk
+          rm -f tests/scripts/utils/testframework.sk
           rm -f tests/scripts/libs/pdc.sk
           rm -f tests/scripts/utils/configreloadv2.sk
+          
 
       - name: Run tests
         uses: devdinc/skript-test-action@v1.3
