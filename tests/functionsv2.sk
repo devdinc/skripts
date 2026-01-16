@@ -93,7 +93,7 @@ test "array handling":
 test "real variable list rejection":
 
     set {_test::*} to 1, 2 and 3
-    assert (function {_varl::*}: sum({_varl::*})).apply(raw expression of {_test::*}) is 6 is false with "unexpected: real variable list succeeded"
+    assert (function {_varl::*}: sum({_varl::*})).apply(raw expression of {_test::*}) is 6 to fail with "unexpected: real variable list succeeded"
 
 
 test "run lambda helpers":
