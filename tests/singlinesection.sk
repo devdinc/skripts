@@ -24,4 +24,4 @@ test "new single line section expression":
     
     set {_section} to single line section "return new ArrayList()"
     run section {_section} and store result in {_n}
-    assert "%{_n}%" is "[]" with "single line section bug 5":
+    assert "%{_n}%" is "[]" with "single line section bug 5"
