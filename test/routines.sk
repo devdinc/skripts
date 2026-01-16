@@ -1,23 +1,13 @@
-effect TEST routines:
-    trigger:
-        test()
-
 import:
     java.net.URL
-    
-local function test():
-    java_call() # this is not failing thanks to new API
-    function_call()
+
+test "routines basic":
+    set {_res} to routine.fluent(instant now).context(async context).supply(lambda:+ new URL("https://www.dummy2.com")).join()
+    assert "%{_res}" is "https://www.dummy2.com" with "java call"
+
+    set {_res} to wait for fluent routine lambda: routine_local_get_url()
+    assert "%{_res}%" is "https://www.dummy1.com" with "function call"
+
     
 function routine_local_get_url() :: object: # has to be not local
     return new URL("https://www.dummy1.com")
-    
-local function java_call():
-    set {_res} to routine.fluent(instant now).context(async context).supply(lambda:+ new URL("https://www.dummy2.com")).join()
-    if "%{_res}%" is not "https://www.dummy2.com":
-        broadcast "<red>failing routine test unsafe_java_call"
-    
-local function function_call():
-    set {_res} to wait for fluent routine lambda: routine_local_get_url()
-    if "%{_res}%" is not "https://www.dummy1.com":
-        broadcast "<red>failing routine test function_call"
