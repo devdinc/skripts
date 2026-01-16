@@ -5,23 +5,23 @@ test "new single line section expression":
     set {_test} to "test"
     set {_section} to single line section "return true if ""%%{_x}%% %{_test}%"" is ""what test"" else false" with args {_x}
     run section {_section} with "what" and store result in {_n}
-    assert false with error message "single line section bug": {_n} is false
+    assert {_n} is true with "single line section bug"
     
     set {_section} to single line section "set {_return} to 1" with args {_x}
     run section {_section} with "what" and store result in {_n}
-    assert false with error message "single line section bug 2": {_return} is 1
+    assert {_return} is not 1 with "single line section bug 2"
     
     set {_x} to raw expression of {_x}
     set {_y} to raw expression of {_z}
     set {_section} to single line section "return {_x} + {_z}" with runtime args {_x}, {_y}
     run section {_section} with 15, 10 and store result in {_n}
-    assert true with error message "single line section bug 3": {_n} is 25
+    assert {_n} is 25 with "single line section bug 3"
     
     set {_a} to 1
     set {_section} to single line section "return {_a}"
     run section {_section} and store result in {_n}
-    assert true with error message "single line section bug 4": {_n} is 1
+    assert {_n} is 1 with "single line section bug 4"
     
     set {_section} to single line section "return new ArrayList()"
     run section {_section} and store result in {_n}
-    assert true with error message "single line section bug 5": "%{_n}%" is "[]"
+    assert "%{_n}%" is "[]" with "single line section bug 5"

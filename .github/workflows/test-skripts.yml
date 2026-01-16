@@ -1,0 +1,82 @@
+name: Run tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - stable
+      - dev
+    paths:
+      - tests/**
+      - scripts/**
+      - .github/workflows/test-skripts.yml
+  pull_request:
+    branches:
+      - stable
+      - dev
+    paths:
+      - tests/**
+      - scripts/**
+      - .github/workflows/test-skripts.yml
+
+concurrency:
+  group: run-tests
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pre-create plugin directory
+        run: |
+          mkdir -p build/libs
+          mkdir -p build/libs/skript-reflect
+
+      - name: Download Skript-Reflect
+        run: |
+          mkdir -p build/libs
+          curl -L -o build/libs/skript-reflect.jar \
+            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.1/skript-reflect-2.6.1.jar
+            
+      - name: Download Routines from JitPack
+        run: |
+          mkdir -p build/libs
+      
+          curl -L --fail -o build/libs/skript-reflect/routines-core.jar \
+            https://jitpack.io/com/github/devdinc/routines/routines-core/v2.2.1/routines-core-v2.2.1.jar
+      
+          curl -L --fail -o build/libs/skript-reflect/routines-paper.jar \
+            https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
+      # Disable pdc for now, i want to remove skbee req
+      # Disable config reload
+      - name: Prepare scripts
+        run: |
+          mkdir -p tests/scripts
+          rsync -av scripts/ tests/scripts/
+          mv tests/scripts/libs/singlelinesection.sk tests/scripts/libs/0_singlelinesection.sk
+          rm -f tests/scripts/utils/testframework.sk
+          rm -f tests/scripts/libs/pdc.sk
+          rm -f tests/scripts/utils/configreloadv2.sk
+          
+
+      - name: Run tests
+        uses: devdinc/skript-test-action@v1.3
+        with:
+          skript_repo_url: https://github.com/devdinc/Skript.git
+          # directory where your test scripts are located (relative to repo root)
+          test_script_directory: tests
+
+          # Skript version or ref (tag, branch, or commit)
+          skript_repo_ref: copy-dir-resources # 2.13.2
+
+          # directory containing addon/plugin jars (relative to repo root)
+          extra_plugins_directory: build/libs
+
+          run_vanilla_tests: false

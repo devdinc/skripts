@@ -1,28 +1,60 @@
-# Skript Testing Framework
+Below is a **single, unified Markdown document** that combines both inputs, removes duplication, and reconciles terminology while preserving all technical detail. Structure has been normalized so it reads as one authoritative specification rather than two overlapping documents.
 
-## Purpose
+---
 
-This module implements a lightweight, self-contained **testing framework for Skript**. It allows scripts to define tests, automatically discover them, execute them deterministically, and report failures with precise diagnostics.
+# Skript Runtime Testing Framework
 
-The framework is designed to:
+## Overview
 
-* Run entirely inside Skript
-* Avoid external dependencies
-* Support both manual and automatic test execution
-* Fail fast while still allowing optional non-halting assertions
+This document describes a **self-contained runtime testing framework for Skript**. The framework replicates much of Skript’s internal development test suite while extending it with runtime-safe execution, reflection-based inspection, and deterministic event-driven control.
+
+Unlike Skript’s native internal tests, this framework:
+
+* Runs entirely at runtime
+* Is safe for production servers
+* Supports both **automatic (autorun)** and **manual** execution
+* Tracks failures centrally with optional console suppression
+
+All framework state is stored under the `-test.sk::*` namespace.
+
+---
+
+## Design Goals
+
+The framework is intentionally minimal and predictable, prioritizing correctness and isolation over flexibility.
+
+It is designed to:
+
+* Allow tests to be written directly in `.sk` files
+* Achieve functional parity with Skript’s internal test actions where feasible
+* Enable meta-testing of Skript syntax and parser behavior
+* Support fail-fast behavior with optional non-halting assertions
+* Prevent state leakage between tests
+
+---
+
+## Feature Parity with Skript’s Native Test Suite
+
+| Feature                   | Status       | Description                                           |
+| ------------------------- | ------------ | ----------------------------------------------------- |
+| **Test structure**        | Achieved     | `test %string%` mirrors native test declarations      |
+| **Conditional execution** | Achieved     | `when <condition>` skips tests dynamically            |
+| **Assertions**            | Achieved     | `assert <condition>` and `assert <condition> to fail` |
+| **Explicit failure**      | Achieved     | `fail test` effect                                    |
+| **Parser inspection**     | Experimental | Parse sections and log capture                        |
 
 ---
 
 ## High-Level Architecture
 
-The framework is built around four core ideas:
+The framework is built around four core principles:
 
-1. **Tests are custom events** identified by name
-2. **Tests are registered implicitly** during script parsing
-3. **Execution is event-driven**, not inline
-4. **Failures are tracked centrally** and reported after execution
+1. **Tests are custom events**
+2. **Tests are registered implicitly at parse time**
+3. **Execution is event-driven, not inline**
+4. **Failures are tracked centrally per test**
 
-All internal state is stored under the `-test.sk::*` variable namespace.
+Each test executes inside a dedicated `skriptTest` event context.
 
 ---
 
@@ -31,41 +63,58 @@ All internal state is stored under the `-test.sk::*` variable namespace.
 ### Syntax
 
 ```skript
-test "<test name>":
+test "<test name>" [when <condition>]:
     <test body>
 ```
 
-* `<test name>` must be unique **within the script**.
-* The test body runs inside the `skriptTest` custom event.
-* The event provides two event-values:
+* `<test name>` must be unique **within the script**
+* Tests are registered automatically when the script is parsed
+* The optional `when` condition is evaluated immediately before execution
 
-  * `string` – the fully-qualified test identifier
-  * `boolean` – whether the test is running in autorun mode
+### Event Context
 
-### Example
+Inside a test, the framework provides:
 
-```skript
-test "basic arithmetic":
-    assert true: 2 + 2 = 4
-```
+* **`event-string` / `event-test`**
+  Fully-qualified test identifier:
+
+  ```
+  <script>/<test name>
+  ```
+
+* **`event-boolean`**
+  Indicates whether the test is running in **autorun mode**
 
 ---
 
 ## Test Registration
 
-Tests are registered automatically at parse time.
+Tests are registered automatically at parse time. No explicit registration step is required.
 
-Internally, the framework records tests under:
+Internal storage format:
 
 ```
 -test.sk::tests::<script>::<test name>
 ```
 
-No explicit registration step is required.
+Registration is deterministic and isolated per script.
 
 ---
 
 ## Running Tests
+
+### Automatic Execution (Autorun)
+
+On script load:
+
+1. Previous global test state is cleared
+2. A hidden sentinel test establishes autorun context
+3. All registered tests are discovered
+4. Tests are executed in autorun mode
+
+Autorun execution passes `true` as the event-boolean value.
+
+---
 
 ### Manual Execution
 
@@ -73,30 +122,15 @@ No explicit registration step is required.
 run test(s) %strings%
 ```
 
-* Accepts one or more test identifiers
-* Identifiers must be fully-qualified:
+* Accepts one or more **fully-qualified test identifiers**
+* Clears prior error state for each test
+* Executes tests outside autorun mode
+
+Identifier format:
 
 ```
 <script>/<test name>
 ```
-
-Before execution:
-
-* Any previous error count for the test is cleared
-* The test is executed via the `skriptTest` custom event
-
----
-
-### Automatic Execution (Autorun)
-
-On script load, the framework:
-
-1. Clears all previous test state
-2. Executes an internal sentinel test
-3. Discovers all registered tests
-4. Executes them using autorun mode
-
-Autorun passes a boolean event-value (`true`) to each test, allowing tests to alter behavior when executed automatically.
 
 ---
 
@@ -110,63 +144,57 @@ all tests [with test name %-string%] [within|from %-script%]
 
 ### Behavior
 
-* **No arguments** → all tests from all scripts
-* **from `<script>`** → only tests in that script
-* **with test name `<string>`** → only the matching test (if present)
+* No arguments → all tests from all scripts
+* `from <script>` → tests scoped to a script
+* `with test name <string>` → exact match only
 
-Returned values are fully-qualified identifiers:
-
-```
-<script>/<test name>
-```
+Returned values are fully-qualified test identifiers.
 
 ---
 
 ## Assertions
 
-### Syntax
+Assertions validate test behavior and record failures.
+
+### Syntax Variants
 
 ```skript
 assert true: <condition>
 assert false: <condition>
+assert <condition> [to fail]
 ```
 
-Optional error message:
+### Optional Modifiers
+
+* **`without halting`**
+  Records failure but continues execution
+
+* **`with error message "<message>"`**
+  Prints formatted failure output
+
+* **`with no error message`**
+  Suppresses console output entirely
+
+Assertions are only valid inside a test context.
+
+---
+
+## Error Tracking
+
+### Expression
 
 ```skript
-assert true with error message "<message>": <condition>
+test errors [for %-strings%]
 ```
 
-Optional non-halting mode:
+* Returns all recorded failures for the current test
+* Includes:
 
-```skript
-without halting assert true: <condition>
-```
+  * Assertion failures
+  * Explicit `fail test` invocations
+  * Internally tracked errors
 
-Optional error message control:
-
-```skript
-assert true with error message "<message>": <condition>
-assert true with no error message: <condition>
-```
-
-### Error Message Semantics
-
-* `with error message "<message>"` – emits a formatted failure message to the console when the assertion fails
-* `with no error message` – suppresses console output entirely
-
-In both cases:
-
-* The failure is still recorded internally
-* The test still halts unless `without halting` is specified
-
-This allows assertions to be used for:
-
-* Silent internal invariants
-* Meta-tests that validate the framework itself
-* Failure counting without polluting console output
-
-Assertions are only valid inside the `skriptTest` event context.
+Errors are reset between tests and never leak across executions.
 
 ---
 
@@ -181,31 +209,121 @@ fail test with error message "<message>"
 
 Behavior:
 
-* Immediately records a failure
-* Optionally prints a formatted error
-* Halts test execution unless `without halting` is specified
+* Records a failure immediately
+* Optionally prints formatted output
+* Halts execution unless `without halting` is specified
+
+## Autorun Execution Semantics
+
+### Autorun Flag (Test Context)
+
+**Expression:**
+
+```skript
+event-test is autorun
+event-test is not autorun
+```
+
+**Type:** Boolean condition
+
+**Meaning:**
+
+* Evaluates to `true` when the current test is executing as part of automatic test execution
+* Evaluates to `false` when the test is executed manually via `run test(s)`
+
+**Scope:**
+
+* Valid only inside a `test` block
+* Bound to the `skriptTest` event context
+
+**Notes:**
+
+* This flag is set by the framework before test execution begins
+* It remains constant for the duration of the test
+* It is commonly used to guard unsafe, destructive, or environment-dependent logic
 
 ---
 
-## Controlling Autorun Execution
+### Autorun Control Effect
 
-### Effect
+**Syntax:**
 
 ```skript
 stop auto test execution here
 ```
 
-* Only meaningful during autorun execution
-* If the test is running in autorun mode, execution stops immediately
-* Has no effect when the test is run manually
+**Behavior:**
 
-This allows tests that are unsafe, destructive, or environment-dependent to opt out of autorun.
+* If `event-test is autorun`:
+
+  * Immediately halts execution of the current test
+    
+* If `event-test is not autorun`:
+
+  * Has no effect
+
+**Use Case:**
+Allows tests to opt out of autorun safely while still being available for manual execution.
+
+---
+
+### Typical Usage Pattern
+
+```skript
+test "destructive test":
+    if event-test is autorun:
+        stop auto test execution here
+    # manual-only logic below
+```
+
+---
+
+### Guarantees
+
+* Autorun mode is always enabled during load-time execution
+* Manual execution always runs with autorun disabled
+* The autorun flag is not mutable by user code
+* Autorun state never leaks between tests
+
+## Experimental: Parsing & Log Inspection
+
+The framework supports testing Skript syntax itself.
+
+### Parse Section
+
+```skript
+parse:
+    <skript code>
+```
+
+* Attempts to parse the nested code using `ParserInstance`
+* Does not execute the code
+
+### Log Inspection
+
+```skript
+last parse logs
+```
+
+* Returns all `SkriptLogger` messages captured during the most recent parse
+* Enables validation of expected parser errors
+
+---
+
+## Test Environment Utilities
+
+To ensure isolation and repeatability, the framework provides controlled test fixtures:
+
+* **`test-world`** – dedicated test world
+* **`test-location`** – fixed location (`spawn + 10, 1, 0`)
+* **`test-block`** – self-resetting block restored after tests
+* **`test-offline-player`** – generated offline player instance
 
 ---
 
 ## Failure Reporting
 
-Each test maintains an internal error counter:
+Each test maintains its own failure count:
 
 ```
 -test.sk::errors::<test id>
@@ -213,8 +331,7 @@ Each test maintains an internal error counter:
 
 After execution completes:
 
-* Tests that were intentionally skipped are excluded
-* A summary line is printed to the console:
+* A summary line is printed:
 
 ```
 <X>/<Y> tests passed
@@ -222,42 +339,44 @@ After execution completes:
 
 Where:
 
-* `Y` is the number of valid executed tests
-* `X` is `Y - total failures`
+* `Y` = executed tests
+* `X` = tests without recorded failures
 
 ---
 
 ## Console Output Format
 
-Failures are reported using the following format:
+When enabled, failures are printed as:
 
 ```
 [Skript] [TEST FAILURE] <test name> <optional message>
 ```
 
-This output is emitted only when an error message is enabled for the assertion or failure.
+Output is suppressed entirely when `with no error message` is specified.
 
 ---
 
-## Internal and Non-Public Details
+## Internal Guarantees
 
-The following are implementation details and should not be relied upon:
-
-* A hidden sentinel test is used during initialization
-* Internal variables are prefixed with `-test.sk::*`
-* The sentinel test ensures framework integrity before user tests run
-
-These details may change without notice.
-
----
-
-## Design Guarantees
+The framework guarantees that:
 
 * Tests are isolated by identifier
 * Registration is implicit and deterministic
 * Autorun and manual execution are distinguishable
 * Failures are recorded even in non-halting mode
-* The framework does not leak state between executions
+* State never leaks between tests
+
+---
+
+## Internal & Non-Public Details
+
+The following are implementation details and must not be relied upon:
+
+* Sentinel test usage
+* Internal variable layout
+* Reflection-based hooks
+
+These may change without notice.
 
 ---
 
@@ -265,7 +384,8 @@ These details may change without notice.
 
 * Regression testing for Skript libraries
 * Validation of complex event-driven logic
-* Automated sanity checks during development
-* Lightweight CI-style verification on server startup
+* Syntax and parser validation
+* Automated sanity checks on server startup
+* Lightweight CI-style verification
 
-This framework is intentionally minimal and favors predictability over flexibility.
+This framework is deliberately constrained to ensure reliability and transparency.
