@@ -3,7 +3,7 @@ import:
 
 test "routines basic":
     set {_res} to routine.fluent(instant now).context(async context).supply(lambda:+ new URL("https://www.dummy2.com")).join()
-    assert "%{_res}" is "https://www.dummy2.com" with "java call"
+    assert "%{_res}%" is "https://www.dummy2.com" with "java call"
 
     set {_res} to wait for fluent routine lambda: routine_local_get_url()
     assert "%{_res}%" is "https://www.dummy1.com" with "function call"
