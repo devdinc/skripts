@@ -66,7 +66,7 @@ jobs:
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: 6dee3a7 # 2.14.0
+          skript_repo_ref: copy-dir-resources # 2.13.2
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
