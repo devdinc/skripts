@@ -1,12 +1,12 @@
 name: Run tests
-# TODO disable skript default tests, copy main files to test folder while files inside has now a suffix of .test.sk instead of .sk
-
+# TODO copy main files to test/scripts folder, and disable testframework.sk if it aint workin
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - test/**
-      - .github/workflows/test-skripts.yml
+  workflow_dispatch: 
+  #push:
+  #  branches: [main, dev]
+  #  paths:
+  #    - test/**
+  #    - .github/workflows/test-skripts.yml
 
 concurrency:
   group: run-tests
@@ -36,7 +36,9 @@ jobs:
           test_script_directory: test
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: 2.14.0
+          skript_repo_ref: 94d9924 # 2.14.0
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs # TODO add skript-reflect
+
+          run_vanilla_tests: false
