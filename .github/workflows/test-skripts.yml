@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir -p build/libs
           curl -L -o build/libs/skript-reflect.jar \
-            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.2/skript-reflect-2.6.2.jar
+            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.1/skript-reflect-2.6.1.jar
 
       - name: Prepare scripts
         run: |
@@ -49,7 +49,7 @@ jobs:
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: 94d9924 # 2.14.0
+          skript_repo_ref: 2.13.2 # 2.14.0
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
