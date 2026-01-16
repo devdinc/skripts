@@ -10,6 +10,14 @@ on:
       - tests/**
       - scripts/**
       - .github/workflows/test-skripts.yml
+  pull_request:
+    branches:
+      - stable
+      - dev
+    paths:
+      - tests/**
+      - scripts/**
+      - .github/workflows/test-skripts.yml
 
 concurrency:
   group: run-tests
