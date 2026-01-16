@@ -1,7 +1,3 @@
-Below is a **single, unified Markdown document** that combines both inputs, removes duplication, and reconciles terminology while preserving all technical detail. Structure has been normalized so it reads as one authoritative specification rather than two overlapping documents.
-
----
-
 # Skript Runtime Testing Framework
 
 ## Overview
