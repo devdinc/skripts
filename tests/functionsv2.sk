@@ -1,0 +1,107 @@
+import:
+    java.util.HashMap
+
+test "supplier and getter":
+    set {_n} to (lambda:+ 1).get()
+    assert {_n} is 1 with "supplier fail"
+    assert (getter: "ok").get() is "ok" with "getter fail"
+    assert (supplier: "test").get() is "test" with "supplier basic failed"
+    assert (supplier: 2 + 3).get() is 5 with "supplier expression failed"
+
+
+test "runnable":
+
+    clear {-functions::test::*}
+    (lambda:- set {-functions::test::temp} to 1).run()
+    assert {-functions::test::temp} is 1 with "runnable fail"
+
+    (lambda:- set {-functions::test::ran} to true).run()
+    assert {-functions::test::ran} is true with "runnable side-effect failed"
+
+
+test "consumer and accepter":
+
+    clear {-functions::test::*}
+    (consumer {_x}: set {-functions::test::c} to {_x}).accept(5)
+    assert {-functions::test::c} is 5 with "consumer fail"
+
+    (accepter {_x}: set {-functions::test::a} to {_x}).accept("ok")
+    assert {-functions::test::a} is "ok" with "accepter fail"
+
+
+test "function and applier":
+
+    assert (function {_x}: {_x} * 2).apply(3) is 6 with "function fail"
+    assert (applier {_x}: "%{_x}%!").apply("hi") is "hi!" with "applier fail"
+    assert (function {_x}: {_x} * 5).apply(5) is 25 with "function basic failed"
+    assert (function {_x}: "%{_x}%_ok").apply("abc") is "abc_ok" with "function string failed"
+    assert (function {_x}: {_x} + 1).apply(9) is 10 with "mixed usage failed"
+
+
+test "biconsumer and biaccepter":
+
+    clear {-functions::test::*}
+    (biconsumer {_a}, {_b}: set {-functions::test::bc} to "%{_a}%,%{_b}%").accept(1, 2)
+    assert {-functions::test::bc} is "1,2" with "biconsumer fail"
+
+    (biaccepter {_a}, {_b}: set {-functions::test::ba} to "%{_a}%-%{_b}%").accept("x", "y")
+    assert {-functions::test::ba} is "x-y" with "biaccepter fail"
+
+
+test "bifunction and biapplier":
+
+    assert (bifunction {_a}, {_b}: {_a} + {_b}).apply(2, 3) is 5 with "bifunction fail"
+    assert (biapplier {_a}, {_b}: "%{_a}%:%{_b}%").apply("a", "b") is "a:b" with "biapplier fail"
+    assert (bifunction {_a}, {_b}: {_a} + {_b}).apply(3, 4) is 7 with "bifunction failed"
+
+
+test "consumer repeated invocation":
+
+    clear {-functions::test::*}
+    set {-functions::test::sum} to 0
+    set {_adder} to (consumer {_x}: add {_x} to {-functions::test::sum})
+    {_adder}.accept(1)
+    {_adder}.accept(2)
+    {_adder}.accept(3)
+    assert {-functions::test::sum} is 6 with "consumer repeat failed"
+
+
+test "biconsumer variable list":
+
+    clear {-functions::test::*}
+    (biconsumer {_a}, {_b}: set {-functions::test::pair::*} to {_a} and {_b}).accept("x", "y")
+    assert {-functions::test::pair::1} is "x" with "biconsumer failed"
+    assert {-functions::test::pair::2} is "y" with "biconsumer failed"
+
+
+test "java stream variable list":
+
+    clear {-functions::test::*}
+    set {-functions::test::varl} to 0
+    set {_map} to new HashMap()
+    {_map}.put(1, 1)
+    {_map}.put(2, 3)
+    {_map}.put(3, 2)
+    (lambda {_arg}:- {_arg}.values().stream().forEach(lambda {_x}:- add {_x} to {-functions::test::varl})).accept({_map})
+    assert {-functions::test::varl} is 6 with "varlist failed"
+
+
+test "array handling":
+    assert (lambda {_varl}:+ sum(...{_varl})).apply([1, 2, 3]) is 6 with "array failed"
+
+
+test "real variable list rejection":
+
+    set {_test::*} to 1, 2 and 3
+    assert (function {_varl::*}: sum({_varl::*})).apply(raw expression of {_test::*}) is 6 is false with "unexpected: real variable list succeeded"
+
+
+test "run lambda helpers":
+    set {_sup} to lambda:+ "yes"
+    assert (run lambda {_sup}) is "yes" with "run supplier fail"
+    assert (run lambda (lambda {_x}:+ {_x}) with "test") is "test" with "run function fail"
+    
+test "java call":
+    set {_lam} to lambda:+ new HashMap()
+    set {_val} to {_lam}.get()
+    assert {_val}.getClass().getSimpleName().equalsIgnoreCase("hashmap") is true with "java call failed"

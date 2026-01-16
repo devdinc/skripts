@@ -1,12 +1,16 @@
 name: Run tests
-# TODO copy main files to test/scripts folder, and disable testframework.sk if it aint workin
+# disable testframework.sk if it aint workin
+
 on:
-  workflow_dispatch: 
-  #push:
-  #  branches: [main, dev]
-  #  paths:
-  #    - test/**
-  #    - .github/workflows/test-skripts.yml
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - stable
+  #     - dev
+  #   paths:
+  #     - tests/**
+  #     - scripts/**
+  #     - .github/workflows/test-skripts.yml
 
 concurrency:
   group: run-tests
@@ -23,22 +27,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Pre-create plugin directory
+        run: mkdir -p build/libs
+
       - name: Download Skript-Reflect
         run: |
           mkdir -p build/libs
           curl -L -o build/libs/skript-reflect.jar \
             https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.2/skript-reflect-2.6.2.jar
-            
+
+      - name: Prepare scripts
+        run: |
+          mkdir -p tests/scripts
+          rsync -av scripts/ tests/scripts/ \
+            --exclude='testframework.sk'
+
       - name: Run tests
         uses: SkriptLang/skript-test-action@v1.2
         with:
           # directory where your test scripts are located (relative to repo root)
-          test_script_directory: test
+          test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
           skript_repo_ref: 94d9924 # 2.14.0
 
           # directory containing addon/plugin jars (relative to repo root)
-          extra_plugins_directory: build/libs # TODO add skript-reflect
+          extra_plugins_directory: build/libs
 
           run_vanilla_tests: false
