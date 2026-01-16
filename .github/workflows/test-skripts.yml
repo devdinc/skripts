@@ -2,14 +2,14 @@ name: Run tests
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - stable
-  #     - dev
-  #   paths:
-  #     - tests/**
-  #     - scripts/**
-  #     - .github/workflows/test-skripts.yml
+  push:
+    branches:
+      - stable
+      - dev
+    paths:
+      - tests/**
+      - scripts/**
+      - .github/workflows/test-skripts.yml
 
 concurrency:
   group: run-tests
