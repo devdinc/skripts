@@ -1,12 +1,14 @@
 import:
     java.util.HashMap
+    java.lang.Integer
+    java.lang.Byte
 
 test "pdc basic set/get with typed pdt":
 
     set {_key} to namespaced-key "plugin:test_int"
 
-    set {_key} within test-world for pdt integer to (42 parsed as integer)
-    assert {_key} within test-world for pdt long is (42 parsed as integer) with "typed pdt get failed"
+    set {_key} within test-world for pdt integer to new Integer(42)
+    assert {_key} within test-world for pdt integer is 42 with "typed pdt get failed"
 
 
 test "pdc overwrite typed value":
@@ -59,8 +61,8 @@ test "pdc holder vs direct pdc equivalence":
     set {_key} to namespaced-key "plugin:test_holder"
     set {_pdc} to test-world's pdc
 
-    set {_key} within test-world for pdt byte to (7 parsed as byte)
-    assert {_key} within {_pdc} for pdt byte is (7 parsed as byte) with "direct pdc access failed"
+    set {_key} within test-world for pdt byte to new Byte(7)
+    assert {_key} within {_pdc} for pdt byte is 7 with "direct pdc access failed"
 
 
 test "pdc boolean pdt":
