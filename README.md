@@ -33,3 +33,11 @@ If you encounter errors such as `Can't understand this expression`, the issue is
 
 Skript loads files alphabetically, with folders being prioritized. To control load order, prefix the Skript file with a folder or a character such as `0_` or `!`
 (e.g., `!testframework.sk`)
+
+## TODO
+
+Currents plans include multiline lambda expression, multiline code support/list support for singlelinesection, removing skbee dependency from pdc, making the test framework support extending over the skriptlang native test suit
+
+---
+
+**For technical details, I recommend you to use deepwiki**
