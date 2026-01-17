@@ -6,6 +6,8 @@ Personal Skript files created for various purposes.
 
 All documentation, setup instructions, and usage examples are maintained in the project [wiki](https://github.com/devdinc/skripts/wiki).
 
+For technical details [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/devdinc/skripts)
+
 ## Purpose
 
 The wiki includes:
@@ -39,7 +41,3 @@ Skript loads files alphabetically, with folders being prioritized. To control lo
 Currents plans include:
 - multiline lambda expression
 - making the test framework support extending over the skriptlang native test suit
-
----
-
-**For technical details, I recommend you to use deepwiki**
