@@ -11,9 +11,7 @@ test "new single line section expression":
     run section {_section} with "what" and store result in {_n}
     assert {_return} is not 1 with "single line section bug 2"
     
-    set {_x} to raw expression of {_x}
-    set {_y} to raw expression of {_z}
-    set {_section} to single line section "return {_x} + {_z}" with runtime args {_x}, {_y}
+    set {_section} to single line section "return {_x} + {_z}" with args "{_x}", "{_z}"
     run section {_section} with 15, 10 and store result in {_n}
     assert {_n} is 25 with "single line section bug 3"
     
