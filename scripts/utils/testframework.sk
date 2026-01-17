@@ -28,21 +28,13 @@ event "skriptTest":
 
 plural expression all tests [with test name %-string%]:
     return type: strings
-    parse:
-        set {_scoped} to false if expr-2 is not set
-        continue
-
     get:
-        if {_scoped} is false:
-            loop {-test.sk::tests::*}:
-                if any:
-                    expr-1 is not set
-                    loop-value is expr-1
-                then:
-                    add "%loop-value%" to {_r::*}
-        else:
-            if {-test.sk::tests::%expr-1%} is set:
-                add "%expr-1%" to {_r::*}
+        loop {-test.sk::tests::*}:
+            if any:
+                expr-1 is not set
+                loop-value is expr-1
+            then:
+                add "%loop-value%" to {_r::*}
 
         return {_r::*}
         
