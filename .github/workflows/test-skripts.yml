@@ -20,7 +20,7 @@ on:
       - .github/workflows/test-skripts.yml
 
 concurrency:
-  group: run-tests
+  group: run-tests-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -62,7 +62,6 @@ jobs:
           rsync -av scripts/ tests/scripts/
           mv tests/scripts/libs/singlelinesection.sk tests/scripts/libs/0_singlelinesection.sk
           rm -f tests/scripts/utils/testframework.sk
-          rm -f tests/scripts/libs/pdc.sk
           rm -f tests/scripts/utils/configreloadv2.sk
           
 
@@ -74,7 +73,7 @@ jobs:
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: copy-dir-resources # 2.13.2
+          skript_repo_ref: ef28bd5 # 2.13.2
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
