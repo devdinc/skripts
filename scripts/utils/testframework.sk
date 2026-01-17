@@ -12,12 +12,12 @@ local effect testFail %string%[, %-string%]:
         send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] %expr-1%%{_msg}%" to console
 
 event "skriptTest":
-    pattern: test %string% [when <(.+)>]
+    pattern: [devdinc] test %string% [when <(.+)>]
     event-values: string, boolean
     check:
         set {_ok} to true
-        set {-test.sk::tests::%current script%::%expr-1%} to "%expr-1%"
-        if "%current script%/%expr-1%" is event-string:
+        set {-test.sk::tests::%expr-1%} to "%expr-1%"
+        if "%expr-1%" is event-string:
             set {_raw} to first element of regex-1
             if {_raw} is set:
                 set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
@@ -26,7 +26,7 @@ event "skriptTest":
                 set {_ok} to {_cond}.check(event)
             continue if {_ok} is true
 
-plural expression all tests [with test name %-string%] [([with]in|from) %-script%]:
+plural expression all tests [with test name %-string%]:
     return type: strings
     parse:
         set {_scoped} to false if expr-2 is not set
@@ -34,20 +34,15 @@ plural expression all tests [with test name %-string%] [([with]in|from) %-script
 
     get:
         if {_scoped} is false:
-            loop indices of {-test.sk::tests::*}:
-                loop {-test.sk::tests::%loop-value%::*}:
-                    if any:
-                        expr-1 is not set
-                        loop-value-2 is expr-1
-                    then:
-                        add "%loop-value-1%/%loop-value-2%" to {_r::*}
-
+            loop {-test.sk::tests::*}:
+                if any:
+                    expr-1 is not set
+                    loop-value is expr-1
+                then:
+                    add "%loop-value%" to {_r::*}
         else:
-            if expr-1 is not set:
-                loop {-test.sk::tests::%expr-2%::*}:
-                    add "%expr-2%/%loop-value%" to {_r::*}
-            else if {-test.sk::tests::%expr-2%::%expr-1%} is set:
-                add "%expr-2%/%expr-1%" to {_r::*}
+            if {-test.sk::tests::%expr-1%} is set:
+                add "%expr-1%" to {_r::*}
 
         return {_r::*}
         
@@ -127,7 +122,7 @@ effect:
             {_bool2} is true
         then:
             if parse tags does not contain "5":
-                testFail "Test ""%{_test}%"" with condition ""%{_label}%: %{_raw}%"" failed", expr-1
+                testFail "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
             add "%expr-1%" to {-test.sk::errors::%{_test}%::*}
             if parse tags contains "3":
                 delay effect
@@ -244,78 +239,78 @@ expression [the] test(-| )offline[-| ]player:
         # TestOfflinePlayer.[TestOfflinePlayer]PLAYER_PROFILE.setProperty(new ProfileProperty("textures", "ewogICJ0aW1lc3RhbXAiIDogMTc0NzQyOTg2MTQwOCwKICAicHJvZmlsZUlkIiA6ICI2OWUzNzAyNjJjN2Q0MjU1YWM3NjliMTNhNWZlOGY3NCIsCiAgInByb2ZpbGVOYW1lIiA6ICJTYWh2ZGUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTE2MGFiZWVhNDI1YzZmODMyYjc0NmE0NTQ0YzVmYjlhOTgxYjAyZTFiZDg1ZmVhNWM3ZWY4MzFiZGM4NzRmMyIKICAgIH0KICB9Cn0="));
         return {_instance}
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
     assert true: {_none} is not set
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert false passes":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert false passes":
     assert false: {_none} is set
     
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 framework internal consistency":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 framework internal consistency":
     without halting assert true: size of all tests > 0
     without halting assert true: "%current script%" is set
     assert true: size of test errors is 0
 
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true failure is recorded":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true failure is recorded":
     without halting assert true with no error message: {_none} is set
     assert true: size of test errors is 1
     
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert error message is stored":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert error message is stored":
     without halting assert true with no error message "msg1": {_none} is set
     assert true with message "check failed": test errors contains "msg1"
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 no error message produces empty suffix":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 no error message produces empty suffix":
     without halting assert true with no error message: {_none} is set
     assert true: size of test errors is 1
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 halting assert stops execution":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 halting assert stops execution":
     assert true with no error message: {_none} is set
     broadcast "<red>ERROR: this should never execute"
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 without halting continues execution":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 without halting continues execution":
     without halting assert true with no error message: {_none} is set
     assert true: {_none} is not set
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test records error":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test records error":
     without halting fail test with no error message
     assert true: size of test errors is 1
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test halts by default":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test halts by default":
     fail test with no error message
     broadcast "<red>ERROR: fail test did not halt"
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
     assert true: event-test is autorun
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
     fail test
     
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag" when event-test is not autorun:
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag" when event-test is not autorun:
     fail test
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
     stop auto test execution here
     broadcast "<red>ERROR: auto execution not stopped"
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test":
     set {_all::*} to all tests
-    assert true: {_all::*} contains "%current script%/f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
+    assert true: {_all::*} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests scoped by script":
-    set {_all::*} to all tests within current script
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests":
+    set {_all::*} to all tests
     assert true: size of {_all::*} > 0
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests A":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests A":
     without halting assert true with no message: {_none} is set
     assert true: size of test errors is 1
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests B":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests B":
     assert true: size of test errors is 0
 
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
     assert true: event-test is event-string
     
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary":
     test block is chest:
         set test-block to trapped chest
     else if test block is trapped chest:
@@ -325,7 +320,7 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary":
         
     # test is continued at on load end
     
-test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
     parse:
         no errors: abc # just an internal stuff to make sure test.sk loads without errors
     assert last parse logs contains "Can't understand this condition/effect: no errors: abc"
