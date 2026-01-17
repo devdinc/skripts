@@ -36,7 +36,9 @@ Skript loads files alphabetically, with folders being prioritized. To control lo
 
 ## TODO
 
-Currents plans include multiline lambda expression, multiline code support/list support for singlelinesection, removing skbee dependency from pdc, making the test framework support extending over the skriptlang native test suit
+Currents plans include:
+- multiline lambda expression
+- making the test framework support extending over the skriptlang native test suit
 
 ---
 
