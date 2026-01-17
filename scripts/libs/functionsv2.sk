@@ -70,11 +70,11 @@ expression build lambda args %objects% body %string% noreturn %boolean% script %
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Runnable using {_functionsv2.sk::ctx::functions::*}
             else if {_functionsv2.sk::ctx::arity} is 1:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with runtime args {_functionsv2.sk::ctx::proxy}, {_functionsv2.sk::ctx::args::1} in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Consumer using {_functionsv2.sk::ctx::functions::*}
             else:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with runtime args {_functionsv2.sk::ctx::proxy}, {_functionsv2.sk::ctx::args::1}, {_functionsv2.sk::ctx::args::2} in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of BiConsumer using {_functionsv2.sk::ctx::functions::*}
         else:
 
@@ -83,11 +83,11 @@ expression build lambda args %objects% body %string% noreturn %boolean% script %
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Supplier using {_functionsv2.sk::ctx::functions::*}
             else if {_functionsv2.sk::ctx::arity} is 1:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with runtime args {_functionsv2.sk::ctx::proxy}, {_functionsv2.sk::ctx::args::1} in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Function using {_functionsv2.sk::ctx::functions::*}
             else:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with runtime args {_functionsv2.sk::ctx::proxy}, {_functionsv2.sk::ctx::args::1}, {_functionsv2.sk::ctx::args::2} in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of BiFunction using {_functionsv2.sk::ctx::functions::*}
         return {_functionsv2.sk::ctx::proxy}
 
@@ -103,6 +103,8 @@ expression:
         set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
         set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
         set {_functionsv2.sk::ctx::script} to script ({_functionsv2.sk::ctx::origin}.getConfig().getFileName())
+        if {_functionsv2.sk::ctx::script} is not set: # likely inner lambda
+            set {_functionsv2.sk::ctx::script} to current script
         continue
     get:
         return build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
@@ -142,6 +144,8 @@ expression:
                 stop
         set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
         set {_functionsv2.sk::ctx::script} to script ({_origin}.getConfig().getFileName())
+        if {_functionsv2.sk::ctx::script} is not set: # likely inner lambda
+            set {_functionsv2.sk::ctx::script} to current script
         continue
     get:
         return build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
