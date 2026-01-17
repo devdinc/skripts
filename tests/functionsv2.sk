@@ -101,7 +101,10 @@ test "run lambda helpers":
     assert (run lambda {_sup}) is "yes" with "run supplier fail"
     assert (run lambda (lambda {_x}:+ {_x}) with "test") is "test" with "run function fail"
     
+import:
+    java.net.URL
+    
 test "java call":
-    set {_lam} to lambda:+ new HashMap()
+    set {_lam} to lambda:+ new URL("https://www.dummy2.com")
     set {_val} to {_lam}.get()
-    assert {_val}.getClass().getSimpleName().equalsIgnoreCase("hashmap") is true with "java call failed"
+    assert {_val}.getClass().getSimpleName().equalsIgnoreCase("URL") is true 

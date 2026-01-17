@@ -44,7 +44,6 @@ Scripts do **not** require syntax changes, but values written by older versions 
 - Paper server  
 - Skript  
 - skript-reflect  
-- skBee  
 
 ---
 

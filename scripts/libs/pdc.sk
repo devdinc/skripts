@@ -117,13 +117,22 @@ expression [devdinc] (pdt|[persistent data ]type) (1:str[ing]|2:int[eger]|3:long
     parse:
         continue
     get:
-        return switch return parse mark:
-            case 1 -> PersistentDataType.STRING
-            case 2 -> PersistentDataType.INTEGER
-            case 3 -> PersistentDataType.LONG
-            case 4 -> PersistentDataType.FLOAT
-            case 5 -> PersistentDataType.DOUBLE
-            case 6 -> PersistentDataType.BYTE
-            case 7 -> PersistentDataType.SHORT
-            case 8 -> PersistentDataType.BOOLEAN
-            default -> {_none}
+        if parse mark is 1:
+            return PersistentDataType.STRING
+        else if parse mark is 2:
+            return PersistentDataType.INTEGER
+        else if parse mark is 3:
+            return PersistentDataType.LONG
+        else if parse mark is 4:
+            return PersistentDataType.FLOAT
+        else if parse mark is 5:
+            return PersistentDataType.DOUBLE
+        else if parse mark is 6:
+            return PersistentDataType.BYTE
+        else if parse mark is 7:
+            return PersistentDataType.SHORT
+        else if parse mark is 8:
+            return PersistentDataType.BOOLEAN
+        else:
+            return {_none}
+

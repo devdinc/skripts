@@ -63,7 +63,6 @@ test "<test name>" [when <condition>]:
     <test body>
 ```
 
-* `<test name>` must be unique **within the script**
 * Tests are registered automatically when the script is parsed
 * The optional `when` condition is evaluated immediately before execution
 
@@ -75,7 +74,7 @@ Inside a test, the framework provides:
   Fully-qualified test identifier:
 
   ```
-  <script>/<test name>
+  <test name>
   ```
 
 * **`event-boolean`**
@@ -90,10 +89,8 @@ Tests are registered automatically at parse time. No explicit registration step 
 Internal storage format:
 
 ```
--test.sk::tests::<script>::<test name>
+-test.sk::tests::<test name>
 ```
-
-Registration is deterministic and isolated per script.
 
 ---
 
@@ -125,7 +122,7 @@ run test(s) %strings%
 Identifier format:
 
 ```
-<script>/<test name>
+<test name>
 ```
 
 ---
@@ -135,13 +132,12 @@ Identifier format:
 ### Expression
 
 ```skript
-all tests [with test name %-string%] [within|from %-script%]
+all tests [with test name %-string%]
 ```
 
 ### Behavior
 
 * No arguments → all tests from all scripts
-* `from <script>` → tests scoped to a script
 * `with test name <string>` → exact match only
 
 Returned values are fully-qualified test identifiers.
@@ -356,7 +352,7 @@ Output is suppressed entirely when `with no error message` is specified.
 
 The framework guarantees that:
 
-* Tests are isolated by identifier
+* Tests are isolated by themselves
 * Registration is implicit and deterministic
 * Autorun and manual execution are distinguishable
 * Failures are recorded even in non-halting mode
