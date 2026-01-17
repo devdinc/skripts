@@ -1,0 +1,75 @@
+test "pdc basic set/get with typed pdt":
+
+    set {_key} to namespaced-key "plugin:test_int"
+
+    set {_key} within test-world for pdt integer to 42
+    assert {_key} within test-world for pdt integer is 42 with "typed pdt get failed"
+
+
+test "pdc overwrite typed value":
+
+    set {_key} to namespaced-key "plugin:test_overwrite"
+
+    set {_key} within test-world for pdt string to "a"
+    set {_key} within test-world for pdt string to "b"
+
+    assert {_key} within test-world for pdt string is "b" with "overwrite failed"
+
+
+test "pdc delete typed value":
+
+    set {_key} to namespaced-key "plugin:test_delete"
+
+    set {_key} within test-world for pdt long to 100
+    delete {_key} within test-world for pdt long
+
+    assert {_key} within test-world for pdt long is {_none} with "delete failed"
+
+
+test "pdc object serialization (byte_array implicit)":
+
+    set {_key} to namespaced-key "plugin:test_object"
+
+    set {_obj} to new HashMap()
+    {_obj}.put("a", 1)
+    {_obj}.put("b", 2)
+
+    set {_key} within test-world to {_obj}
+
+    set {_out} to {_key} within test-world
+    assert {_out}.get("a") is 1 with "object deserialize failed (a)"
+    assert {_out}.get("b") is 2 with "object deserialize failed (b)"
+
+
+test "pdc remove object via null":
+
+    set {_key} to namespaced-key "plugin:test_object_remove"
+
+    set {_key} within test-world to "temp"
+    set {_key} within test-world to null
+
+    assert {_key} within test-world is {_none} with "object remove via null failed"
+
+
+test "pdc holder vs direct pdc equivalence":
+
+    set {_key} to namespaced-key "plugin:test_holder"
+    set {_pdc} to test-world's pdc
+
+    set {_key} within test-world for pdt byte to 7
+    assert {_key} within {_pdc} for pdt byte is 7 with "direct pdc access failed"
+
+
+test "pdc boolean pdt":
+
+    set {_key} to namespaced-key "plugin:test_bool"
+
+    set {_key} within test-world for pdt boolean to true
+    assert {_key} within test-world for pdt boolean is true with "boolean pdt failed"
+
+
+test "pdc default object missing returns none":
+
+    set {_key} to namespaced-key "plugin:test_missing"
+
+    assert {_key} within test-world is {_none} with "missing object did not return none"
