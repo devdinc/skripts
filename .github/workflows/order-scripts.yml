@@ -1,0 +1,18 @@
+name: Order Scripts
+
+on:
+  push:
+    branches:
+      - stable
+
+permissions:
+  contents: write
+
+jobs:
+  restructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: devdinc/restructure-action@v0.1.1
+        with:
+          source-ref: stable
+          restructure-file: .restructure
