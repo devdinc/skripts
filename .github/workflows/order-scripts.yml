@@ -3,7 +3,7 @@ name: Order Scripts
 on:
   push:
     branches:
-      - stable
+      - ordered
 
 permissions:
   contents: write
