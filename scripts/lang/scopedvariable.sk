@@ -1,0 +1,106 @@
+import:
+    ch.njol.skript.lang.Variable
+
+plural expression scoped [variable] %objects% [([with]in|from) (%-script%|%-string%)]:
+    parse:
+        expr-1 is an instance of Variable
+        set {_var} to expr-1
+        continue
+
+    get:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                return {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                return {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                return {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                return {local::%{_script}%::%{_var}.getName()%}
+
+    set:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                set {-local::%{_script}%::%{_var}.getName()%::*} to change values
+            else:
+                set {-local::%{_script}%::%{_var}.getName()%} to change value
+        else:
+            if {_var}.isList():
+                set {local::%{_script}%::%{_var}.getName()%::*} to change values
+            else:
+                set {local::%{_script}%::%{_var}.getName()%} to change value
+
+    add:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                add change values to {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                add change values to {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                add change values to {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                add change values to {local::%{_script}%::%{_var}.getName()%}
+
+    remove:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                remove change values from {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                remove change values from {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                remove change values from {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                remove change values from {local::%{_script}%::%{_var}.getName()%}
+
+    remove all:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                remove all change values from {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                remove all change values from {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                remove all change values from {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                remove all change values from {local::%{_script}%::%{_var}.getName()%}
+
+    delete:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                delete {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                delete {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                delete {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                delete {local::%{_script}%::%{_var}.getName()%}
+
+    reset:
+        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+
+        if {_var}.isEphemeral():
+            if {_var}.isList():
+                clear {-local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                clear {-local::%{_script}%::%{_var}.getName()%}
+        else:
+            if {_var}.isList():
+                clear {local::%{_script}%::%{_var}.getName()%::*}
+            else:
+                clear {local::%{_script}%::%{_var}.getName()%}
