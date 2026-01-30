@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p build/libs
           curl -L -o build/libs/skript-reflect.jar \
-            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.1/skript-reflect-2.6.1.jar
+            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.2/skript-reflect-2.6.2.jar
             
       - name: Download Routines from JitPack
         run: |
@@ -68,12 +68,12 @@ jobs:
       - name: Run tests
         uses: devdinc/skript-test-action@v1.3
         with:
-          skript_repo_url: https://github.com/devdinc/Skript.git
+          skript_repo_url: https://github.com/SkriptLang/Skript.git
           # directory where your test scripts are located (relative to repo root)
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: ef28bd5 # 2.13.2
+          skript_repo_ref: 01d155a # 2.14.0-dev
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
