@@ -1,0 +1,50 @@
+test "scoped variable - set & get":
+    set scoped {-test} to 12
+    assert scoped {-test} is 12
+
+test "scoped variable - add":
+    set scoped {-addtest} to 5
+    add 3 to scoped {-addtest}
+    assert scoped {-addtest} is 8
+
+test "scoped variable - lists":
+    set scoped {-lists::*} to "a", "b", "c"
+    assert scoped {-lists::*} contains "a"
+    assert scoped {-lists::*} contains "b"
+    assert scoped {-lists::*} contains "c"
+
+test "scoped variable - remove":
+    set scoped {-removetest::*} to "a", "b", "c"
+    remove "b" from scoped {-removetest::*}
+    assert scoped {-removetest::*} contains "a"
+    assert scoped {-removetest::*} contains "c"
+    assert scoped {-removetest::*} does not contain "b"
+
+test "scoped variable - remove all":
+    set scoped {-removeall::*} to "a", "b", "b", "c"
+    remove all "b" from scoped {-removeall::*}
+    assert scoped {-removeall::*} is "a", "c"
+
+test "scoped variable - delete":
+    set scoped {-deletetest} to 42
+    delete scoped {-deletetest}
+    assert scoped {-deletetest} is not set
+
+test "scoped variable - reset single value":
+    set scoped {-resettest} to 9
+    reset scoped {-resettest}
+    assert scoped {-resettest} is not set
+
+test "scoped variable - reset list":
+    set scoped {-resetlist::*} to 1, 2, 3
+    reset scoped {-resetlist::*}
+    assert scoped {-resetlist::*} is not set
+
+test "scoped variable - non-ephemeral (named)":
+    set scoped {namedtest} to "hello"
+    assert scoped {namedtest} is "hello"
+    delete scoped {namedtest}
+
+test "scoped variable - script scoping":
+    set scoped {-scoped} within current script to 100
+    assert scoped {-scoped} is 100
