@@ -17,7 +17,7 @@ All framework state is stored under the `-test.sk::*` namespace.
 
 ## Design Goals
 
-The framework is intentionally minimal and predictable, prioritizing correctness and isolation over flexibility.
+The framework is intentionally minimal and predictable.
 
 It is designed to:
 
@@ -38,6 +38,43 @@ It is designed to:
 | **Assertions**            | Achieved     | `assert <condition>` and `assert <condition> to fail` |
 | **Explicit failure**      | Achieved     | `fail test` effect                                    |
 | **Parser inspection**     | Experimental | Parse sections and log capture                        |
+
+## Skript Native Test Tracker Integration (Experimental)
+
+This framework includes **experimental support for Skript’s native `TestTracker`**.
+
+### What This Means
+
+* Test failures are forwarded to Skript’s internal test tracker
+* Failures appear in Skript’s native reporting pipeline
+* CI-style tooling can observe results
+
+### Important Limitations
+
+**This does NOT imply full parity with Skript’s internal test framework.**
+
+Many test expressions and effects from this script are **not available** via test %string% pattern when using Skript's quickTest.
+
+You **must** use:
+
+```skript
+devdinc test %string%
+```
+
+---
+
+### Experimental Status
+
+Test tracker support is:
+
+* **Experimental**
+
+It may:
+
+* Break across Skript versions
+* Be disabled in future releases
+
+No compatibility guarantees are provided.
 
 ---
 
@@ -302,14 +339,106 @@ last parse logs
 
 ---
 
+## Test Lifecycle Hooks (Before / After)
+
+The framework provides **test lifecycle hooks** that allow controlled setup and teardown logic.
+
+### Available Hooks
+
+```skript
+before each test
+after each test
+before all tests
+after all tests
+```
+
+### Semantics
+
+* **`before each test`**
+  Runs immediately before every individual test execution.
+
+* **`after each test`**
+  Runs immediately after every individual test execution, regardless of outcome.
+
+* **`before all tests`**
+  Runs once before any test is executed.
+
+* **`after all tests`**
+  Runs once after all test execution completes.
+
+### Event Context
+
+Hooks execute with the same event values as a normal test:
+
+* `event-string` – current test identifier (for per-test hooks)
+* `event-boolean` – autorun flag
+
+### Intended Usage
+
+Hooks are designed for:
+
+* Environment setup / teardown
+* Temporary state mutation
+* Resource allocation and cleanup
+* Optional world isolation (see below)
+
+Hooks **must not** be used to implement assertions directly.
+
+---
+
 ## Test Environment Utilities
 
 To ensure isolation and repeatability, the framework provides controlled test fixtures:
 
-* **`test-world`** – dedicated test world
-* **`test-location`** – fixed location (`spawn + 10, 1, 0`)
-* **`test-block`** – self-resetting block restored after tests
+**`test-world`** – the `"skripttest"` world if present, otherwise the first loaded world
+* **`test-location`** – fixed location (`spawn + 10, 1, 0`) in test-world
+* **`test-block`** – self-resetting block restored after tests located at test-location
 * **`test-offline-player`** – generated offline player instance
+  
+---
+
+## World Isolation & Persistence Guarantees
+
+### Default Behavior
+
+By default, **tests share the same world state**.
+
+This is intentional.
+
+Automatic per-test world isolation is **not enabled** because:
+
+* Full world backup/restore is **disk-intensive**
+* Synchronous world copying is **slow**
+* Asynchronous restore is **unsafe**
+* Large worlds make isolation prohibitively expensive
+
+The framework therefore prioritizes **predictable runtime safety** over implicit isolation.
+
+---
+
+### Opt-In World Isolation Using Hooks
+
+Full isolation **can** be achieved manually using lifecycle hooks:
+
+```skript
+before each test:
+    # backup world state
+
+after each test:
+    # restore world state
+```
+
+This allows users to:
+
+* Snapshot world folders
+* Restore region files
+* Roll back test-specific mutations
+
+⚠ **Important:**
+This approach is **explicitly opt-in** and entirely user-controlled.
+
+The framework does **not** provide built-in world snapshotting utilities and makes no assumptions about storage strategy, synchronization model, or performance tradeoffs.
+
 
 ---
 
@@ -352,7 +481,7 @@ Output is suppressed entirely when `with no error message` is specified.
 
 The framework guarantees that:
 
-* Tests are isolated by themselves
+* Test execution state is isolated per test
 * Registration is implicit and deterministic
 * Autorun and manual execution are distinguishable
 * Failures are recorded even in non-halting mode
@@ -381,3 +510,28 @@ These may change without notice.
 * Lightweight CI-style verification
 
 This framework is deliberately constrained to ensure reliability and transparency.
+
+---
+
+## Reflection Usage Disclaimer
+
+Several advanced features rely on **reflection**:
+
+* Parser inspection (`ParserInstance`)
+* Condition parsing
+* Native test tracker forwarding
+* Log capture via `SkriptLogger`
+
+### Guarantees
+
+* Reflection usage is **read-only or carefully scoped**
+* No permanent internal state is mutated
+* All parser state is backed up and restored
+
+### Non-Guarantees
+
+* Binary compatibility across Skript versions
+* Stability under obfuscation
+* Availability on forks with modified internals
+
+Reflection-backed features are considered **best-effort** and may degrade gracefully.
