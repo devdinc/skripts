@@ -40,5 +40,4 @@ Skript loads files alphabetically, with folders being prioritized. To control lo
 
 Currents plans include:
 - multiline lambda expression
-- making the test framework support extending over the skriptlang native test suit
 - Auto casting for primitives, pdc.sk(new Byte,Integer etc)
