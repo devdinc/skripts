@@ -1,0 +1,13 @@
+import:
+    ch.njol.skript.lang.Effect
+
+effect [repeat] <(.+)> (1:once|2:twice|3:thrice|4:%-number% times):
+    parse:
+        set {_repeat.sk::effect} to Effect.parse(first element of regex-1)
+        continue
+    trigger:
+        set {_times} to expr-1
+        if parse mark is not 4:
+            set {_times} to parse mark
+        loop {_times} times:
+            {_repeat.sk::effect}.run(event)
