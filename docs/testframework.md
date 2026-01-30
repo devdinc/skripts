@@ -36,8 +36,8 @@ It is designed to:
 | **Test structure**        | Achieved     | `test %string%` mirrors native test declarations      |
 | **Conditional execution** | Achieved     | `when <condition>` skips tests dynamically            |
 | **Assertions**            | Achieved     | `assert <condition>` and `assert <condition> to fail` |
-| **Explicit failure**      | Achieved     | `fail test` effect                                    |
 | **Parser inspection**     | Experimental | Parse sections and log capture                        |
+| **Test entities**         | Partial      | More information below                                |
 
 ## Skript Native Test Tracker Integration (Experimental)
 
