@@ -1,0 +1,28 @@
+import:
+    ch.njol.skript.lang.Condition
+
+condition <(.+)> (1:&&|2:\|\|) <(.+)>:
+    check:
+        set {_a} to first element of regex-1
+        set {_b} to first element of regex-2
+        set {_message} to "Can't understand this condition: "
+        set {_bool1} to Condition.parse({_a}, "%{_message}%%{_a}%").check(event)
+        set {_bool2} to Condition.parse({_b}, "%{_message}%%{_b}%").check(event)
+        if parse mark is 1:
+            if all:
+                {_bool1} is true
+                {_bool2} is true
+            then:
+                continue
+        else:
+            if any:
+                {_bool1} is true
+                {_bool2} is true
+            then:
+                continue
+                
+expression boolean value of condition <(.+)>:
+    get:
+        set {_b} to first element of regex-1
+        set {_message} to "Can't understand this condition: "
+        return Condition.parse({_b}, "%{_message}%%{_b}%").check(event)
