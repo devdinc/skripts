@@ -113,6 +113,23 @@ object property p[ersistent ]d[ata ]c[ontainer]:
     get:
         return expr-1.getPersistentDataContainer()
 
+expression [devdinc] new p[ersistent ]d[ata ]c[ontainer] from %object%:
+    parse:
+        continue
+
+    get:
+        set {_src} to expr-1
+
+        if {_src} is instance of PersistentDataHolder:
+            set {_ctx} to {_src}.getPersistentDataContainer().getAdapterContext()
+            return {_ctx}.newPersistentDataContainer()
+
+        if {_src} is instance of PersistentDataContainer:
+            set {_ctx} to {_src}.getAdapterContext()
+            return {_ctx}.newPersistentDataContainer()
+
+        return {_none}
+
 expression [devdinc] (pdt|[persistent data ]type) [of] (1:str[ing]|2:int[eger]|3:long|4:float|5:double|6:byte|7:short|8:bool[ean]|9:container):
     parse:
         continue
