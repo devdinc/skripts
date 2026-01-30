@@ -113,7 +113,7 @@ object property p[ersistent ]d[ata ]c[ontainer]:
     get:
         return expr-1.getPersistentDataContainer()
 
-expression [devdinc] (pdt|[persistent data ]type) (1:str[ing]|2:int[eger]|3:long|4:float|5:double|6:byte|7:short|8:bool[ean]):
+expression [devdinc] (pdt|[persistent data ]type) [of] (1:str[ing]|2:int[eger]|3:long|4:float|5:double|6:byte|7:short|8:bool[ean]|9:container):
     parse:
         continue
     get:
@@ -133,6 +133,8 @@ expression [devdinc] (pdt|[persistent data ]type) (1:str[ing]|2:int[eger]|3:long
             return PersistentDataType.SHORT
         else if parse mark is 8:
             return PersistentDataType.BOOLEAN
+        else if parse mark is 9:
+            return PersistentDataType.TAG_CONTAINER
         else:
             return {_none}
 
