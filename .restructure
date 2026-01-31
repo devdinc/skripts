@@ -1,7 +1,7 @@
 using scripts
 
 prefix:
-  0 libs/singlelinesection.sk
+  0 libs/parser/singlelinesection.sk
   1 libs/functionsv2.sk
   2 libs/routines.sk
   3 .

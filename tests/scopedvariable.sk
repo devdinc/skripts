@@ -48,3 +48,11 @@ test "scoped variable - non-ephemeral (named)":
 test "scoped variable - script scoping":
     set scoped {-scoped} within current script to 100
     assert scoped {-scoped} is 100
+
+test "scoped variable - inner expression resolution":
+    set {_i} to 1
+    set scoped {-list::*} to 20
+    assert scoped {-list::%{_i}%} is 20 to fail # this sadly fails
+    set {_list::*} to scoped {-list::*}
+    assert {_list::%{_i}%} is 20
+    assert scoped {-list::1} is 20 to fail # same

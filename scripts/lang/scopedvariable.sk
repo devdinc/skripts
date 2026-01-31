@@ -1,106 +1,119 @@
 import:
     ch.njol.skript.lang.Variable
+    ch.njol.skript.variables.Variables
+    ch.njol.skript.log.SkriptLogger
 
-plural expression scoped [variable] %objects% [([with]in|from) (%-script%|%-string%)]:
+# todo scoped within current package/folder, local variables?
+
+expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
     parse:
         expr-1 is an instance of Variable
+        set {_origin} to SkriptLogger.getNode()
+        set {_currentscript} to script ({_origin}.getConfig().getFileName())
         set {_var} to expr-1
         continue
 
-    get:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+    get: # todo sadly {_var}.getName().toString(event) does not work(ClassCastException), meaning we cant resolve expressions inside
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                return {-local::%{_script}%::%{_var}.getName()%::*}
+                return {-local::%{_script}%::%{_name}%::*}
             else:
-                return {-local::%{_script}%::%{_var}.getName()%}
+                return {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                return {local::%{_script}%::%{_var}.getName()%::*}
+                return {local::%{_script}%::%{_name}%::*}
             else:
-                return {local::%{_script}%::%{_var}.getName()%}
+                return {local::%{_script}%::%{_name}%}
 
     set:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                set {-local::%{_script}%::%{_var}.getName()%::*} to change values
+                set {-local::%{_script}%::%{_name}%::*} to change values
             else:
-                set {-local::%{_script}%::%{_var}.getName()%} to change value
+                set {-local::%{_script}%::%{_name}%} to change value
         else:
             if {_var}.isList():
-                set {local::%{_script}%::%{_var}.getName()%::*} to change values
+                set {local::%{_script}%::%{_name}%::*} to change values
             else:
-                set {local::%{_script}%::%{_var}.getName()%} to change value
+                set {local::%{_script}%::%{_name}%} to change value
 
     add:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                add change values to {-local::%{_script}%::%{_var}.getName()%::*}
+                add change values to {-local::%{_script}%::%{_name}%::*}
             else:
-                add change values to {-local::%{_script}%::%{_var}.getName()%}
+                add change values to {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                add change values to {local::%{_script}%::%{_var}.getName()%::*}
+                add change values to {local::%{_script}%::%{_name}%::*}
             else:
-                add change values to {local::%{_script}%::%{_var}.getName()%}
+                add change values to {local::%{_script}%::%{_name}%}
 
     remove:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                remove change values from {-local::%{_script}%::%{_var}.getName()%::*}
+                remove change values from {-local::%{_script}%::%{_name}%::*}
             else:
-                remove change values from {-local::%{_script}%::%{_var}.getName()%}
+                remove change values from {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                remove change values from {local::%{_script}%::%{_var}.getName()%::*}
+                remove change values from {local::%{_script}%::%{_name}%::*}
             else:
-                remove change values from {local::%{_script}%::%{_var}.getName()%}
+                remove change values from {local::%{_script}%::%{_name}%}
 
     remove all:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                remove all change values from {-local::%{_script}%::%{_var}.getName()%::*}
+                remove all change values from {-local::%{_script}%::%{_name}%::*}
             else:
-                remove all change values from {-local::%{_script}%::%{_var}.getName()%}
+                remove all change values from {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                remove all change values from {local::%{_script}%::%{_var}.getName()%::*}
+                remove all change values from {local::%{_script}%::%{_name}%::*}
             else:
-                remove all change values from {local::%{_script}%::%{_var}.getName()%}
+                remove all change values from {local::%{_script}%::%{_name}%}
 
     delete:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                delete {-local::%{_script}%::%{_var}.getName()%::*}
+                delete {-local::%{_script}%::%{_name}%::*}
             else:
-                delete {-local::%{_script}%::%{_var}.getName()%}
+                delete {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                delete {local::%{_script}%::%{_var}.getName()%::*}
+                delete {local::%{_script}%::%{_name}%::*}
             else:
-                delete {local::%{_script}%::%{_var}.getName()%}
+                delete {local::%{_script}%::%{_name}%}
 
     reset:
-        set {_script} to "%current script%" if expr-2 is not set else "%expr-2%"
+        set {_name} to try {_var}.getName().toString()
+        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
             if {_var}.isList():
-                clear {-local::%{_script}%::%{_var}.getName()%::*}
+                clear {-local::%{_script}%::%{_name}%::*}
             else:
-                clear {-local::%{_script}%::%{_var}.getName()%}
+                clear {-local::%{_script}%::%{_name}%}
         else:
             if {_var}.isList():
-                clear {local::%{_script}%::%{_var}.getName()%::*}
+                clear {local::%{_script}%::%{_name}%::*}
             else:
-                clear {local::%{_script}%::%{_var}.getName()%}
+                clear {local::%{_script}%::%{_name}%}

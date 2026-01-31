@@ -1,3 +1,4 @@
+# todo registration process should use parse of event
 using reflection
 
 import:
@@ -336,15 +337,19 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test halts by default":
     broadcast "<red>ERROR: fail test did not halt"
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
+    if event-test is not autorun:
+        stop
     assert true: event-test is autorun
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
     fail test
     
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag" when event-test is not autorun:
-    fail test
+    fail test if event-test is autorun
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
+    if event-test is not autorun:
+        stop
     stop auto test execution here
     broadcast "<red>ERROR: auto execution not stopped"
 

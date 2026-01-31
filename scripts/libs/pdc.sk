@@ -8,6 +8,18 @@ import:
     org.bukkit.util.io.BukkitObjectInputStream
     org.bukkit.util.io.BukkitObjectOutputStream
     ch.njol.skript.lang.Variable
+    java.lang.Byte
+    java.lang.Short
+    java.lang.Integer
+    java.lang.Long
+    java.lang.Float
+    java.lang.Double
+    java.lang.Boolean
+    
+on load:
+    set scoped {-primitives::pdt::*} to PersistentDataType.BOOLEAN, PersistentDataType.BYTE, PersistentDataType.SHORT, PersistentDataType.INTEGER, PersistentDataType.LONG, PersistentDataType.FLOAT, PersistentDataType.DOUBLE, PersistentDataType.STRING
+    set scoped {-primitives::str::*} to "bool", "byte", "short", "int", "long", "float", "double", "str"
+    set scoped {-primitives::int::*} to 8, 4, 5, 6, 7, 2, 3, 1
 
 local function validate_pdcexpr(key: object, pdc: object, pdt: object) :: boolean:
     if all:
@@ -22,53 +34,96 @@ local function validate_pdcexpr(key: object, pdc: object, pdt: object) :: boolea
         return false
     return true
 
-# e.g. key "plugin:test" in player's pdc for type byte 
-expression [devdinc] %object% [with]in %object%[ for %-object%]: 
+
+local function coerce_pdt_value(pdt: object, value: object) :: object:
+    if {_value} is not set:
+        return {_none}
+
+    if {_pdt} is PersistentDataType.INTEGER:
+        return try new Integer({_value})
+
+    else if {_pdt} is PersistentDataType.BYTE:
+        return try new Byte({_value})
+
+    else if {_pdt} is PersistentDataType.SHORT:
+        return try new Short({_value})
+
+    else if {_pdt} is PersistentDataType.LONG:
+        return try new Long({_value})
+
+    else if {_pdt} is PersistentDataType.FLOAT:
+        return try new Float({_value})
+
+    else if {_pdt} is PersistentDataType.DOUBLE:
+        return try new Double({_value})
+
+    else if {_pdt} is PersistentDataType.STRING:
+        return {_value} if {_value} is a text
+
+    else if {_pdt} is PersistentDataType.BOOLEAN:
+        return {_value} if {_value} is a boolean
+
+    else if {_pdt} is PersistentDataType.BYTE_ARRAY:
+        return {_value}
+
+    return {_none}
+
+
+expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
     parse:
         set {_key} to expr-1
         set {_pdt} to expr-3
-            
+
         if any:
-            "%{_key}%" is "[devdinc] [namespaced]( |-)key %%string%%"
-            {_key} is instance of Variable
+            "%{_pdt}%" contains "[devdinc] (pdt|[persistent data ]type)"
+            "%{_pdt}%" contains "PersistentDataType"
+            {_pdt} is instance of Variable
+            {_pdt} is not set
         then:
-            if any:
-                "%{_pdt}%" contains "[devdinc] (pdt|[persistent data ]type)"
-                "%{_pdt}%" contains "PersistentDataType"
-                {_pdt} is instance of Variable
-                {_pdt} is not set
-            then:
-                continue
-        stop
+            continue
 
     get:
         set {_key} to expr-1
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
-        
-        stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
-            
-        if {_pdt} is not set:
-            if {_pdc}.has({_key}, PersistentDataType.BYTE_ARRAY) is false:
-                return {_none}
 
-            set {_bytes} to {_pdc}.get({_key}, PersistentDataType.BYTE_ARRAY)
-            set {_in} to new BukkitObjectInputStream(new ByteArrayInputStream({_bytes}))
-            set {_obj} to {_in}.readObject()
-            {_in}.close()
-            return {_obj}
+        stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
+
+        if {_pdt} is not set:
+            set {_typeKey} to namespaced key "%{_key}%..type"
+
+            if {_pdc}.has({_typeKey}, PersistentDataType.STRING):
+                set {_typeId} to {_pdc}.get({_typeKey}, PersistentDataType.STRING)
+                
+                set {_i} to 1
+                loop scoped {-primitives::str::*}:
+                    if {_typeId} is loop-value:
+                        set {_pdt} to {_i}th element of scoped {-primitives::pdt::*}
+                        return {_pdc}.get({_key}, {_pdt})
+                    add 1 to {_i}
+
+            else:
+                if {_pdc}.has({_key}, PersistentDataType.BYTE_ARRAY) is false:
+                    return {_none}
+
+                set {_bytes} to {_pdc}.get({_key}, PersistentDataType.BYTE_ARRAY)
+                set {_in} to new BukkitObjectInputStream(new ByteArrayInputStream({_bytes}))
+                set {_obj} to {_in}.readObject()
+                {_in}.close()
+                return {_obj}
         else:
             return {_pdc}.get({_key}, {_pdt})
+
 
     set:
         set {_key} to expr-1
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
-        
+
         stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
-        
+
         set {_value} to change value
-        
+
         if any:
             {_value} is null
             {_value} is not set
@@ -77,46 +132,66 @@ expression [devdinc] %object% [with]in %object%[ for %-object%]:
             stop
 
         if {_pdt} is not set:
+            set {_typeKey} to namespaced key "%{_key}%..type"
+            
+            set {_i} to 1
+            loop scoped {-primitives::pdt::*}:
+                set {_try} to coerce_pdt_value(loop-value, {_value})
+
+                if {_try} is set:
+                    {_pdc}.set({_key}, loop-value, {_try})
+                    {_pdc}.set({_typeKey}, PersistentDataType.STRING, {_i}th element of scoped {-primitives::str::*})
+
+                    stop
+                
+                add 1 to {_i}
+
             set {_baos} to new ByteArrayOutputStream()
             set {_out} to new BukkitObjectOutputStream({_baos})
             {_out}.writeObject({_value})
             {_out}.close()
-            
+
             set {_boxedBytes::*} to ...{_baos}.toByteArray()
             set {_bytes} to new byte[size of {_boxedBytes::*}]
             loop {_boxedBytes::*}:
                 set {_bytes}[loop-index parsed as number - 1] to loop-value
-                
+
             {_pdc}.set({_key}, PersistentDataType.BYTE_ARRAY, {_bytes})
 
         else:
-            {_pdc}.set({_key}, {_pdt}, {_value})
+            set {_coerced} to coerce_pdt_value({_pdt}, {_value})
+            {_pdc}.set({_key}, {_pdt}, {_coerced})
+
 
     delete:
         set {_key} to expr-1
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
-        
+
         stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
-        
+
+        set {_typeKey} to namespaced key "%{_key}%..type"
+        {_pdc}.remove({_typeKey})
         {_pdc}.remove({_key})
+
 
 expression [devdinc] [namespaced]( |-)key %string%:
     parse:
         continue
     get:
         return NamespacedKey.fromString(expr-1, null)
-        
+
+
 object property p[ersistent ]d[ata ]c[ontainer]:
     parse:
         continue
     get:
         return expr-1.getPersistentDataContainer()
 
+
 expression [devdinc] new p[ersistent ]d[ata ]c[ontainer] from %object%:
     parse:
         continue
-
     get:
         set {_src} to expr-1
 
@@ -130,28 +205,12 @@ expression [devdinc] new p[ersistent ]d[ata ]c[ontainer] from %object%:
 
         return {_none}
 
+
 expression [devdinc] (pdt|[persistent data ]type) [of] (1:str[ing]|2:int[eger]|3:long|4:float|5:double|6:byte|7:short|8:bool[ean]|9:container):
     parse:
         continue
     get:
-        if parse mark is 1:
-            return PersistentDataType.STRING
-        else if parse mark is 2:
-            return PersistentDataType.INTEGER
-        else if parse mark is 3:
-            return PersistentDataType.LONG
-        else if parse mark is 4:
-            return PersistentDataType.FLOAT
-        else if parse mark is 5:
-            return PersistentDataType.DOUBLE
-        else if parse mark is 6:
-            return PersistentDataType.BYTE
-        else if parse mark is 7:
-            return PersistentDataType.SHORT
-        else if parse mark is 8:
-            return PersistentDataType.BOOLEAN
-        else if parse mark is 9:
-            return PersistentDataType.TAG_CONTAINER
-        else:
-            return {_none}
+        set {_l::*} to scoped {-primitives::int::*}
+        set {_i} to {_l::%parse mark%}
+        return {_i}th element of scoped {-primitives::pdt::*}
 
