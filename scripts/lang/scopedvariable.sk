@@ -13,8 +13,9 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
         set {_var} to expr-1
         continue
 
-    get: # todo sadly {_var}.getName().toString(event) does not work(ClassCastException), meaning we cant resolve expressions inside
-        set {_name} to try {_var}.getName().toString()
+    get:
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -29,7 +30,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 return {local::%{_script}%::%{_name}%}
 
     set:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -44,7 +46,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 set {local::%{_script}%::%{_name}%} to change value
 
     add:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -59,7 +62,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 add change values to {local::%{_script}%::%{_name}%}
 
     remove:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -74,7 +78,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 remove change values from {local::%{_script}%::%{_name}%}
 
     remove all:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -89,7 +94,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 remove all change values from {local::%{_script}%::%{_name}%}
 
     delete:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():
@@ -104,7 +110,8 @@ expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
                 delete {local::%{_script}%::%{_name}%}
 
     reset:
-        set {_name} to try {_var}.getName().toString()
+        set {_name} to try {_var}.getName().toUnformattedString(event)
+        replace "::*" with "" in {_name}
         set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
 
         if {_var}.isEphemeral():

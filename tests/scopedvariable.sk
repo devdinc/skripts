@@ -52,7 +52,7 @@ test "scoped variable - script scoping":
 test "scoped variable - inner expression resolution":
     set {_i} to 1
     set scoped {-list::*} to 20
-    assert scoped {-list::%{_i}%} is 20 to fail # this sadly fails
+    assert scoped {-list::%{_i}%} is 20
     set {_list::*} to scoped {-list::*}
     assert {_list::%{_i}%} is 20
-    assert scoped {-list::1} is 20 to fail # same
+    assert scoped {-list::1} is 20
