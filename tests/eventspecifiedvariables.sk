@@ -1,0 +1,90 @@
+test "variable scalar set/get":
+    set {_x} to 5
+    set {_res} to variable {_x} with event
+    assert {_res} is 5 with "scalar get"
+
+test "variable scalar set overwrite":
+    set {_x} to 1
+    set variable {_x} with event to 10
+    assert {_x} is 10 with "scalar set overwrite"
+
+test "variable scalar add unset":
+    delete {_x}
+    add 3 to variable {_x} with event
+    assert {_x} is 3 with "scalar add when unset"
+
+test "variable scalar add existing":
+    set {_x} to 4
+    add 6 to variable {_x} with event
+    assert {_x} is 10 with "scalar add existing"
+
+test "variable scalar remove":
+    set {_x} to 10
+    remove 3 from variable {_x} with event
+    assert {_x} is 7 with "scalar remove subtract"
+
+test "variable scalar delete":
+    set {_x} to 5
+    delete variable {_x} with event
+    assert {_x} is not set with "scalar delete"
+
+test "variable scalar reset":
+    set {_x} to 5
+    reset variable {_x} with event
+    assert {_x} is not set with "scalar reset"
+
+test "variable list set/get":
+    set {_list::*} to "a", "b", "c"
+    set {_res::*} to variable {_list::*} with event
+    assert {_res::1} is "a" with "list get index 1"
+    assert {_res::2} is "b" with "list get index 2"
+    assert {_res::3} is "c" with "list get index 3"
+
+test "variable list set clears previous":
+    set {_list::*} to "x", "y"
+    set variable {_list::*} with event to "a", "b"
+    assert {_list::1} is "a" with "list overwrite clears old"
+    assert {_list::2} is "b" with "list overwrite new value"
+    assert {_list::3} is not set with "list cleared extra entries"
+
+test "variable list add":
+    set {_list::*} to "a", "b"
+    add "c", "d" to variable {_list::*} with event
+    assert {_list::1} is "a" with "list add preserves index 1"
+    assert {_list::2} is "b" with "list add preserves index 2"
+    assert {_list::3} is "c" with "list add index 3"
+    assert {_list::4} is "d" with "list add index 4"
+
+test "variable list remove first match":
+    set {_list::*} to "a", "b", "c"
+    remove "b" from variable {_list::*} with event
+    assert {_list::2} is not set with "list remove deletes matching entry"
+    assert {_list::1} is "a" with "list remove keeps others"
+
+test "variable list remove all":
+    set {_list::*} to "a", "b", "a", "c"
+    remove all "a" from variable {_list::*} with event
+    assert {_list::1} is not "a" with "list remove all removes first"
+    assert {_list::3} is not "a" with "list remove all removes duplicates"
+
+test "variable list delete":
+    set {_list::*} to "x", "y"
+    delete variable {_list::*} with event
+    assert {_list::*} is not set with "list delete clears list"
+
+test "variable list reset":
+    set {_list::*} to "x", "y"
+    reset variable {_list::*} with event
+    assert {_list::*} is not set with "list reset clears list"
+
+test "variable parse rejects non-variable":
+    parse:
+        set {_x} to variable 5 with event
+    assert last parse logs contains "Expression 1 must be a variable"
+
+test "variable parse rejects multiple change values":
+    parse:
+        set variable {_x} with event to 1, 2
+    assert last parse logs contains "You can't set a single variable to multiple values"
+        
+
