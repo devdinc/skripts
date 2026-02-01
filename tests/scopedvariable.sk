@@ -48,6 +48,8 @@ test "scoped variable - non-ephemeral (named)":
 test "scoped variable - script scoping":
     set scoped {-scoped} within current script to 100
     assert scoped {-scoped} is 100
+    set scoped {-scoped2} to 100
+    assert scoped {-scoped2} within current script is 100
 
 test "scoped variable - inner expression resolution":
     set {_i} to 1
@@ -56,3 +58,56 @@ test "scoped variable - inner expression resolution":
     set {_list::*} to scoped {-list::*}
     assert {_list::%{_i}%} is 20
     assert scoped {-list::1} is 20
+    
+test "scoped variable - folder vs current script isolation":
+    set scoped {-x} within current script to 1
+    set scoped {-x} within current folder to 2
+
+    assert scoped {-x} within current script is 1
+    assert scoped {-x} within current folder is 2
+
+devdinc test "scoped variable - default scope switch to folder":
+    set default scope for scoped variables in current script to current folder
+
+    set scoped {-d} to 42
+
+    without halting assert scoped {-d} within current folder is 42
+    without halting assert scoped {-d} within current script is not set
+    set default scope for scoped variables in current script to current script
+
+test "scoped variable - default scope is script-local":
+    set scoped {-a} to 5
+
+    set default scope for scoped variables in current script to current folder
+    set scoped {-b} to 6
+
+    assert scoped {-a} within current script is 5
+    assert scoped {-b} within current folder is 6
+    set default scope for scoped variables in current script to current script
+
+#test "scoped variable - list folder isolation":
+#    set scoped {-l::*} within folder "one" to "a", "b"
+#    set scoped {-l::*} within folder "two" to "c"
+#
+#    assert scoped {-l::*} within folder "one" is "a", "b"
+#    assert scoped {-l::*} within folder "two" is "c"
+
+test "scoped variable - reset does not affect other scopes":
+    set scoped {-r} within current folder to 1
+    set scoped {-r} within current script to 2
+
+    reset scoped {-r} within current script
+
+    assert scoped {-r} within current script is not set
+    assert scoped {-r} within current folder is 1
+    
+# todo sadly locals do not reset after a scope is over..., to mitigate we do this
+after all tests:
+    delete scoped {_locals::*}
+
+test "scoped variable - locals a":
+    set scoped {_locals::a} to 15
+    assert scoped {_locals::a} is 15
+    
+test "scoped variable - locals b":
+    assert scoped {_locals::a} is not 15

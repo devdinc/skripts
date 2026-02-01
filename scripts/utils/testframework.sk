@@ -1,4 +1,6 @@
 # todo registration process should use parse of event
+# todo tests should be isolated between .sk files, so before/after is triggered only if a test within that script is running
+# todo all tests within %script%
 using reflection
 
 import:
@@ -7,6 +9,7 @@ import:
     ch.njol.skript.test.utils.TestOfflinePlayer
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
+    ch.njol.skript.log.SkriptLogger
 
 local effect sendTestFailMessage %string%[, %-string%]:
     trigger:
@@ -139,12 +142,14 @@ effect:
         custom event "skriptTest"
     parse:
         set {_raw} to first element of regex-1
+        set {_origin} to SkriptLogger.getNode()
+        set {_currentscript} to script ({_origin}.getConfig().getFileName())
         
         set {_parser} to ParserInstance.get()
         set {_parser}.[ParserInstance]isActive to true
         set {_backup} to {_parser}.backup()  
         
-        {_parser}.setCurrentScript(current script)
+        {_parser}.setCurrentScript({_currentscript})
         {_parser}.setCurrentEvent("assert condition", (custom event "skriptTest").getClass())
         
         set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
@@ -221,7 +226,6 @@ condition %string% (1:is|2:is not|2:isn't) autorun:
             
 import:
     ch.njol.skript.ScriptLoader
-    ch.njol.skript.log.SkriptLogger
             
 condition parse:
     parse:

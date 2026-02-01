@@ -1,126 +1,268 @@
 import:
-    ch.njol.skript.lang.Variable
-    ch.njol.skript.variables.Variables
     ch.njol.skript.log.SkriptLogger
+    ch.njol.skript.lang.Variable
+    com.btk5h.skriptmirror.WrappedEvent
+    ch.njol.skript.variables.Variables
+    java.util.Map
 
-# todo scoped within current package/folder, local variables?
+# todo move this to a seperate file
+local expression variable %$objects% with event %object%:
+    parse:
+        if size of change values is greater than 1:
+            {_isList} is false
+            stop # todo a error log
+            
+        set {_var} to expr-1
+        set {_isLocal} to {_var}.isLocal()
+        set {_isList} to {_var}.isList()
+        continue
+    set:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
 
-expression scoped [variable] %$objects% [([with]in|from) (%-script%|%-string%)]:
+        if {_isList} is true:
+            set {_base} to {_name}.substring(0, {_name}.length() - 3)
+            Variables.setVariable("%{_base}%::*", null, expr-2, {_isLocal})
+            set {_i} to 1
+            loop change values:
+                Variables.setVariable("%{_base}%::%{_i}%", loop-value, expr-2, {_isLocal})
+                add 1 to {_i}
+            stop
+
+        Variables.setVariable({_name}, change value, expr-2, {_isLocal})
+
+
+    get:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+
+        if {_value} is instance of Map:
+            # convert map to list using Java Map methods
+            set {_base} to {_name}.substring(0, {_name}.length() - 3)
+
+            loop {_value}.keySet(): # todo iterator would be better
+                set {_list::%loop-value%} to {_value}.get(loop-value)
+            return {_list::*}
+
+        # scalar fallback
+        return {_value}
+
+
+    add:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+
+        if {_value} is instance of Map:
+            set {_base} to {_name}.substring(0, {_name}.length() - 3)
+            set {_i} to {_value}.size() + 1
+            loop change values:
+                Variables.setVariable("%{_base}%::%{_i}%", loop-value, expr-2, {_isLocal})
+                add 1 to {_i}
+            stop
+
+        # scalar add
+        if {_value} is not set:
+            Variables.setVariable({_name}, change value, expr-2, {_isLocal})
+        else:
+            Variables.setVariable({_name}, {_value} + change value, expr-2, {_isLocal})
+            
+    remove:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+
+        if {_value} is instance of Map:
+            set {_it} to {_value}.entrySet().iterator()
+            while {_it}.hasNext():
+                set {_entry} to {_it}.next()
+                if change values contains {_entry}.getValue():
+                    Variables.setVariable({_entry}.getKey(), null, expr-2, {_isLocal})
+                    stop
+            stop
+
+        # scalar remove = subtract
+        Variables.setVariable({_name}, {_value} - change value, expr-2, {_isLocal})
+
+
+
+    remove all:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+
+        if {_value} is instance of Map:
+            set {_it} to {_value}.entrySet().iterator()
+            while {_it}.hasNext():
+                set {_entry} to {_it}.next()
+                if change values contains {_entry}.getValue():
+                    Variables.setVariable({_entry}.getKey(), null, expr-2, {_isLocal})
+            stop
+
+    delete:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        Variables.setVariable({_name}, null, expr-2, {_isLocal})
+
+
+
+    reset:
+        set {_name} to {_var}.getName().toUnformattedString(expr-2)
+        Variables.setVariable({_name}, null, expr-2, {_isLocal})
+
+effect set default scope for scoped variables in current script to (a:current (x:folder|x:package|y:script)|b:(folder|package) %-string%|c: %-script%):
+    parse:
+        set {_origin} to SkriptLogger.getNode()
+        set {_realscript} to script ({_origin}.getConfig().getFileName())
+        continue
+    trigger:
+        if parse tags contains "a":
+            if parse tags contains "x":
+                set {_currentscript} to {_origin}.getConfig().getPath().getParent().toString()
+                set {_currentscript} to {_currentscript}.substring({_currentscript}.indexOf("scripts/") + 8)
+                set {-scoped.sk::default_scope::%{_realscript}%} to {_currentscript}
+            else if parse tags contains "y":
+                set {-scoped.sk::default_scope::%{_realscript}%} to {_realscript}
+        else if parse tags contains "b":
+            set {-scoped.sk::default_scope::%{_realscript}%} to expr-1
+        else if parse tags contains "c":
+            set {-scoped.sk::default_scope::%{_realscript}%} to expr-2
+            
+local function scoped_ctx(origin: object, event: object, var: object, script: object, mark: number) :: objects:
+    # origin + script
+    set {_realscript} to script ({_origin}.getConfig().getFileName())
+
+    # --- scope ---
+    if {_mark} is 0:
+        set {_scope} to {_realscript} if {-scoped.sk::default_scope::%{_realscript}%} is not set else {-scoped.sk::default_scope::%{_realscript}%}
+    else if {_mark} is 1:
+        set {_scope} to {_script}
+    else if {_mark} is 2:
+        set {_scope} to {_origin}.getConfig().getPath().getParent().toString()
+        set {_scope} to {_scope}.substring({_scope}.indexOf("scripts/") + 8)
+
+    if {_var}.isLocal():
+        set {_scope} to "%{_origin}.getParent()%::%{_scope}%"
+
+    # --- name ---
+    set {_name} to {_var}.getName().toUnformattedString({_event})
+    replace "::*" with "" in {_name}
+
+    # --- flags ---
+    set {_ctx::1scope} to {_scope}
+    set {_ctx::2name} to {_name}
+    set {_ctx::3list} to {_var}.isList()
+    if any:
+        {_var}.isLocal()
+        {_var}.isEphemeral()
+    then:
+        set {_ctx::4temp} to true
+    else:
+        set {_ctx::4temp} to false
+
+    return {_ctx::*}
+
+
+expression scoped [variable] %$objects% [([with]in|from|by) (1:%-script%|2:current (folder|package))]:
     parse:
         expr-1 is an instance of Variable
-        set {_origin} to SkriptLogger.getNode()
-        set {_currentscript} to script ({_origin}.getConfig().getFileName())
         set {_var} to expr-1
+        
+        # we use this to do local variables and to capture backing expression's script, could be made cleaner.
+        
+        # for locals we need to make it ephemeral, if name starts with _, if we could access previous event we could have made it really local, but this is the only way
+        # we use origin.toString 
+        set {_origin} to SkriptLogger.getNode()
         continue
 
     get:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
-
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                return {-local::%{_script}%::%{_name}%::*}
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                return {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                return {-local::%{_script}%::%{_name}%}
+                return {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                return {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                return {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                return {local::%{_script}%::%{_name}%}
+                return {scoped::%{_ctx::1}%::%{_ctx::2}%}
 
     set:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
-
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                set {-local::%{_script}%::%{_name}%::*} to change values
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                set {-scoped::%{_ctx::1}%::%{_ctx::2}%::*} to change values
             else:
-                set {-local::%{_script}%::%{_name}%} to change value
+                set {-scoped::%{_ctx::1}%::%{_ctx::2}%} to change value
         else:
-            if {_var}.isList():
-                set {local::%{_script}%::%{_name}%::*} to change values
+            if {_ctx::3} is true:
+                set {scoped::%{_ctx::1}%::%{_ctx::2}%::*} to change values
             else:
-                set {local::%{_script}%::%{_name}%} to change value
+                set {scoped::%{_ctx::1}%::%{_ctx::2}%} to change value
 
     add:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                add change values to {-local::%{_script}%::%{_name}%::*}
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                add change values to {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                add change values to {-local::%{_script}%::%{_name}%}
+                add change values to {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                add change values to {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                add change values to {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                add change values to {local::%{_script}%::%{_name}%}
+                add change values to {scoped::%{_ctx::1}%::%{_ctx::2}%}
 
     remove:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                remove change values from {-local::%{_script}%::%{_name}%::*}
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                remove change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                remove change values from {-local::%{_script}%::%{_name}%}
+                remove change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                remove change values from {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                remove change values from {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                remove change values from {local::%{_script}%::%{_name}%}
+                remove change values from {scoped::%{_ctx::1}%::%{_ctx::2}%}
 
     remove all:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                remove all change values from {-local::%{_script}%::%{_name}%::*}
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                remove all change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                remove all change values from {-local::%{_script}%::%{_name}%}
+                remove all change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                remove all change values from {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                remove all change values from {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                remove all change values from {local::%{_script}%::%{_name}%}
+                remove all change values from {scoped::%{_ctx::1}%::%{_ctx::2}%}
 
     delete:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                delete {-local::%{_script}%::%{_name}%::*}
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                delete {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                delete {-local::%{_script}%::%{_name}%}
+                delete {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                delete {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                delete {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                delete {local::%{_script}%::%{_name}%}
+                delete {scoped::%{_ctx::1}%::%{_ctx::2}%}
 
     reset:
-        set {_name} to try {_var}.getName().toUnformattedString(event)
-        replace "::*" with "" in {_name}
-        set {_script} to "%{_currentscript}%" if expr-2 is not set else "%expr-2%"
+        set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_var}.isEphemeral():
-            if {_var}.isList():
-                clear {-local::%{_script}%::%{_name}%::*}
+        if {_ctx::4} is true:
+            if {_ctx::3} is true:
+                clear {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                clear {-local::%{_script}%::%{_name}%}
+                clear {-scoped::%{_ctx::1}%::%{_ctx::2}%}
         else:
-            if {_var}.isList():
-                clear {local::%{_script}%::%{_name}%::*}
+            if {_ctx::3} is true:
+                clear {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
             else:
-                clear {local::%{_script}%::%{_name}%}
+                clear {scoped::%{_ctx::1}%::%{_ctx::2}%}
+
