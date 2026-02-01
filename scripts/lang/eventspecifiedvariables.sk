@@ -5,20 +5,22 @@ import:
     ch.njol.skript.Skript
     org.bukkit.event.Event
 
-expression variable %$objects% with event %object%:
+expression variable %$objects% with custom-event [%-object%]:
     parse:
         if expr-1 is not an instance of Variable:
             Skript.error("Expression 1 must be a variable")
             stop
 
-        if expr-2 is not an instance of Event:
+        if expr-2 is set:
+            expr-2 is not an instance of Event
             Skript.error("Expression 2 must be an event")
             stop
-
-        if size of change values is greater than 1:
-            {_isList} is false
-            Skript.error("You can't set a single variable to multiple values")
-            stop
+            
+        # change values does not exist here and we cant specify "set scope"
+        #if size of change values is greater than 1:
+        #    {_isList} is false
+        #    Skript.error("You can't set a single variable to multiple values")
+        #    stop
             
         set {_var} to expr-1
         set {_isLocal} to {_var}.isLocal()
@@ -26,28 +28,31 @@ expression variable %$objects% with event %object%:
         continue
 
     set:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-
-        if {_isList} is true:
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        if any:
+            {_isList} is true
+            {_name} ends with "::*" # inner resolution, not how skript behaves but I want it this way
+        then:
             set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            Variables.setVariable("%{_base}%::*", null, expr-2, {_isLocal})
+            Variables.setVariable("%{_base}%::*", null, {_event}, {_isLocal})
             set {_i} to 1
             loop change values:
-                Variables.setVariable("%{_base}%::%{_i}%", loop-value, expr-2, {_isLocal})
+                Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_event}, {_isLocal})
                 add 1 to {_i}
             stop
 
-        Variables.setVariable({_name}, change value, expr-2, {_isLocal})
+        Variables.setVariable({_name}, change value, {_event}, {_isLocal})
 
     get:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
 
         if {_value} is instance of Map:
             set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            set {_it} to {_value}.entrySet().iterator()
-            while {_it}.hasNext():
-                set {_entry} to {_it}.next()
+            loop ...{_value}.entrySet():
+                set {_entry} to loop-value
                 set {_list::%{_entry}.getKey()%} to {_entry}.getValue()
             return {_list::*}
 
@@ -55,61 +60,62 @@ expression variable %$objects% with event %object%:
         return {_value}
 
     add:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
 
         if {_value} is instance of Map:
             set {_base} to {_name}.substring(0, {_name}.length() - 3)
             set {_i} to {_value}.size() + 1
             loop change values:
-                Variables.setVariable("%{_base}%::%{_i}%", loop-value, expr-2, {_isLocal})
+                Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_event}, {_isLocal})
                 add 1 to {_i}
             stop
 
         # scalar add
         if {_value} is not set:
-            Variables.setVariable({_name}, change value, expr-2, {_isLocal})
+            Variables.setVariable({_name}, change value, {_event}, {_isLocal})
         else:
-            Variables.setVariable({_name}, {_value} + change value, expr-2, {_isLocal})
+            Variables.setVariable({_name}, {_value} + change value, {_event}, {_isLocal})
             
     remove:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
 
         if {_value} is instance of Map:
             set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            set {_it} to {_value}.entrySet().iterator()
-            while {_it}.hasNext():
-                set {_entry} to {_it}.next()
+            loop ...{_value}.entrySet():
+                set {_entry} to loop-value
                 if change values contains {_entry}.getValue():
-                    Variables.setVariable("%{_base}::%{_entry}.getKey()%", null, expr-2, {_isLocal})
+                    Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_event}, {_isLocal})
                     stop
             stop
 
         # scalar remove = subtract
-        Variables.setVariable({_name}, {_value} - change value, expr-2, {_isLocal})
+        Variables.setVariable({_name}, {_value} - change value, {_event}, {_isLocal})
 
 
 
     remove all:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        set {_value} to Variables.getVariable({_name}, expr-2, {_isLocal})
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
 
         if {_value} is instance of Map:
             set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            set {_it} to {_value}.entrySet().iterator()
-            while {_it}.hasNext():
-                set {_entry} to {_it}.next()
+            loop ...{_value}.entrySet():
+                set {_entry} to loop-value
                 if change values contains {_entry}.getValue():
-                    Variables.setVariable("%{_base}::%{_entry}.getKey()%", null, expr-2, {_isLocal})
+                    Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_event}, {_isLocal})
             stop
 
     delete:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        Variables.setVariable({_name}, null, expr-2, {_isLocal})
-
-
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        Variables.setVariable({_name}, null, {_event}, {_isLocal})
 
     reset:
-        set {_name} to {_var}.getName().toUnformattedString(expr-2)
-        Variables.setVariable({_name}, null, expr-2, {_isLocal})
+        set {_event} to event if expr-2 is not set else expr-2
+        set {_name} to {_var}.getName().toUnformattedString({_event})
+        Variables.setVariable({_name}, null, {_event}, {_isLocal})
