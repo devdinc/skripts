@@ -65,5 +65,62 @@ test "pdc boolean pdt":
 test "pdc default object missing returns none":
 
     assert scoped {-key} within test-world is not set with "missing object did not return none"
-    
-# todo more tests with unspecified pdt
+
+test "pdc unspecified pdt boolean":
+
+    set scoped {-key} within test-world to true
+    assert scoped {-key} within test-world is true with "unspecified boolean failed"
+
+
+test "pdc unspecified pdt byte":
+
+    set scoped {-key} within test-world to 5
+    assert scoped {-key} within test-world is 5 with "unspecified byte failed"
+
+
+test "pdc unspecified pdt short":
+
+    set scoped {-key} within test-world to 12
+    assert scoped {-key} within test-world is 12 with "unspecified short failed"
+
+
+test "pdc unspecified pdt integer":
+
+    set scoped {-key} within test-world to 123
+    assert scoped {-key} within test-world is 123 with "unspecified integer failed"
+
+
+test "pdc unspecified pdt long":
+
+    set scoped {-key} within test-world to 123
+    assert scoped {-key} within test-world is 123 with "unspecified long failed"
+
+
+test "pdc unspecified pdt float":
+
+    set scoped {-key} within test-world to 1.5
+    assert scoped {-key} within test-world is 1.5 with "unspecified float failed"
+
+
+test "pdc unspecified pdt double":
+
+    set scoped {-key} within test-world to 2.75
+    assert scoped {-key} within test-world is 2.75 with "unspecified double failed"
+
+
+test "pdc unspecified pdt string":
+
+    set scoped {-key} within test-world to "hello"
+    assert scoped {-key} within test-world is "hello" with "unspecified string failed"
+
+
+test "pdc unspecified pdt tag_container":
+
+    set {_inner-key} to namespaced-key "plugin:inner"
+    set scoped {_inner-key} within test-world for pdt integer to 9
+
+    set {_container} to test-world's pdc
+    set scoped {-key} within test-world to {_container}
+
+    set {_out} to scoped {-key} within test-world
+    assert scoped {_inner-key} within {_out} for pdt integer is 9 with "unspecified tag_container failed"
