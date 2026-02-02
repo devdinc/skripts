@@ -90,7 +90,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
         stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
 
         if {_pdt} is not set:
-            set {_typeKey} to namespaced key "%{_key}%..type"
+            set {_typeKey} to NamespacedKey.fromString("%{_key}%..type", null) 
 
             if {_pdc}.has({_typeKey}, PersistentDataType.STRING):
                 set {_typeId} to {_pdc}.get({_typeKey}, PersistentDataType.STRING)
@@ -132,7 +132,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
             stop
 
         if {_pdt} is not set:
-            set {_typeKey} to namespaced key "%{_key}%..type"
+            set {_typeKey} to NamespacedKey.fromString("%{_key}%..type", null) 
             
             set {_i} to 1
             loop scoped {-primitives::pdt::*}:
@@ -170,7 +170,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
 
         stop if validate_pdcexpr({_key}, {_pdc}, {_pdt}) is false
 
-        set {_typeKey} to namespaced key "%{_key}%..type"
+        set {_typeKey} to NamespacedKey.fromString("%{_key}%..type", null) 
         {_pdc}.remove({_typeKey})
         {_pdc}.remove({_key})
 

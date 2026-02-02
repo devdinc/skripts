@@ -70,7 +70,7 @@ expression scoped [variable] %$objects% [([with]in|from|by) (1:%-script%|2:curre
 
     get:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
-        # todo others
+
         # we do this to remove the warning message
         if {_ctx::1} is "_":
             return variable "_scoped::%{_ctx::2}%" with custom-event event
