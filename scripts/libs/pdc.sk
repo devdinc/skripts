@@ -19,7 +19,7 @@ import:
 on load:
     set scoped {-primitives::pdt::*} to PersistentDataType.BOOLEAN, PersistentDataType.BYTE, PersistentDataType.SHORT, PersistentDataType.INTEGER, PersistentDataType.LONG, PersistentDataType.FLOAT, PersistentDataType.DOUBLE, PersistentDataType.STRING, PersistentDataType.TAG_CONTAINER
     set scoped {-primitives::str::*} to "bool", "byte", "short", "int", "long", "float", "double", "str", "pdc"
-    set scoped {-primitives::int::*} to 8, 4, 5, 6, 7, 2, 3, 1, 9
+    set scoped {-primitives::int::*} to 8, 6, 7, 2, 3, 4, 5, 1, 9
 
 local function validate_pdcexpr(key: object, pdc: object, pdt: object) :: boolean:
     if all:
