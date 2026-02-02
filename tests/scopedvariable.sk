@@ -100,10 +100,6 @@ test "scoped variable - reset does not affect other scopes":
 
     assert scoped {-r} within current script is not set
     assert scoped {-r} within current folder is 1
-    
-# todo sadly locals do not reset after a scope is over..., to mitigate we do this
-after all tests:
-    delete scoped {_locals::*}
 
 test "scoped variable - locals a":
     set scoped {_locals::a} to 15

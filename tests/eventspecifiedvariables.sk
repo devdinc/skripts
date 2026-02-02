@@ -2,57 +2,57 @@ import:
     ch.njol.skript.log.SkriptLogger
 
 test "variable scalar set/get":
-    set variable {_x} with custom-event to 5
-    set {_res} to variable {_x} with custom-event
+    set {_x} with custom-event to 5
+    set {_res} to {_x} with custom-event
     assert {_res} is 5 with "scalar get"
 
 test "variable scalar set overwrite":
-    set variable {_x} with custom-event to 1
-    set variable {_x} with custom-event to 10
+    set {_x} with custom-event to 1
+    set {_x} with custom-event to 10
     assert {_x} is 10 with "scalar set overwrite"
 
 test "variable scalar add unset":
-    delete variable {_x} with custom-event
-    add 3 to variable {_x} with custom-event
+    delete {_x} with custom-event
+    add 3 to {_x} with custom-event
     assert {_x} is 3 with "scalar add when unset"
 
 test "variable scalar add existing":
-    set variable {_x} with custom-event to 4
-    add 6 to variable {_x} with custom-event
+    set {_x} with custom-event to 4
+    add 6 to {_x} with custom-event
     assert {_x} is 10 with "scalar add existing"
 
 test "variable scalar remove":
-    set variable {_x} with custom-event to 10
-    remove 3 from variable {_x} with custom-event
+    set {_x} with custom-event to 10
+    remove 3 from {_x} with custom-event
     assert {_x} is 7 with "scalar remove subtract"
 
 test "variable scalar delete":
-    set variable {_x} with custom-event to 5
-    delete variable {_x} with custom-event
+    set {_x} with custom-event to 5
+    delete {_x} with custom-event
     assert {_x} is not set with "scalar delete"
 
 test "variable scalar reset":
     set {_x} to 5
-    reset variable {_x} with custom-event
+    reset {_x} with custom-event
     assert {_x} is not set with "scalar reset"
 
 test "variable list set/get":
-    set variable {_list::*} with custom-event to "a", "b", "c"
-    set variable {_res::*} to variable {_list::*} with custom-event
+    set {_list::*} with custom-event to "a", "b", "c"
+    set {_res::*} to {_list::*} with custom-event
     assert {_res::1} is "a" with "list get index 1"
     assert {_res::2} is "b" with "list get index 2"
     assert {_res::3} is "c" with "list get index 3"
 
 test "variable list set clears previous":
     set {_list::*} to "x", "y"
-    set variable {_list::*} with custom-event to "a", "b"
+    set {_list::*} with custom-event to "a", "b"
     assert {_list::1} is "a" with "list overwrite clears old"
     assert {_list::2} is "b" with "list overwrite new value"
     assert {_list::3} is not set with "list cleared extra entries"
 
 test "variable list add":
-    set variable {_list::*} with custom-event to "a", "b"
-    add "c", "d" to variable {_list::*} with custom-event
+    set {_list::*} with custom-event to "a", "b"
+    add "c", "d" to {_list::*} with custom-event
     assert {_list::1} is "a" with "list add preserves index 1"
     assert {_list::2} is "b" with "list add preserves index 2"
     assert {_list::3} is "c" with "list add index 3"
@@ -60,40 +60,45 @@ test "variable list add":
 
 test "variable list remove first match":
     set {_list::*} to "a", "b", "c"
-    remove "b" from variable {_list::*} with custom-event
+    remove "b" from {_list::*} with custom-event
     assert {_list::2} is not set with "list remove deletes matching entry"
     assert {_list::1} is "a" with "list remove keeps others"
 
 test "variable list remove all":
     set {_list::*} to "a", "b", "a", "c"
-    remove all "a" from variable {_list::*} with custom-event
+    remove all "a" from {_list::*} with custom-event
     assert {_list::1} is not "a" with "list remove all removes first"
     assert {_list::3} is not "a" with "list remove all removes duplicates"
 
 test "variable list delete":
     set {_list::*} to "x", "y"
-    delete variable {_list::*} with custom-event
+    delete {_list::*} with custom-event
     assert {_list::*} is not set with "list delete clears list"
 
 test "variable list reset":
     set {_list::*} to "x", "y"
-    reset variable {_list::*} with custom-event
+    reset {_list::*} with custom-event
     assert {_list::*} is not set with "list reset clears list"
     
 test "inner resolution":
     # ephemeral prefix works but for skript warning "Starting a variable with a variable... warning we do this"
     set {_inner} to "event.scopified.test::*" 
-    set variable {-a%{_inner}%} with custom-event to 15
+    set {-a%{_inner}%} with custom-event to 15
     assert {-aevent.scopified.test::*} contains 15
 
-test "variable parse rejects non-variable":
-    parse:
-        set {_x} to variable 5 with custom-event
-    assert last parse logs contains "Expression 1 must be a variable"
+test "string locals":
+    set variable "_abc" with custom-event to "abc"
+    assert variable "_abc" with custom-event is "abc"
+    assert {_abc} is "abc"
+
+#test "variable parse rejects non-variable":
+#    parse:
+#        set {_x} to variable 5 with custom-event
+#    assert last parse logs contains "Expression 1 must be a variable"
 
 #test "variable parse rejects multiple change values":
 #    parse:
-#        set variable {_x} with custom-event to 1, 2
+#        set {_x} with custom-event to 1, 2
 #    assert last parse logs contains "You can't set a single variable to multiple values"
 
 

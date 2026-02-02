@@ -1,6 +1,7 @@
 import:
     ch.njol.skript.log.SkriptLogger
     ch.njol.skript.lang.Variable
+    ch.njol.skript.Skript
 
 effect set default scope for scoped variables in current script to (a:current (x:folder|x:package|y:script)|b:(folder|package) %-string%|c: %-script%):
     parse:
@@ -10,8 +11,10 @@ effect set default scope for scoped variables in current script to (a:current (x
     trigger:
         if parse tags contains "a":
             if parse tags contains "x":
-                set {_currentscript} to {_origin}.getConfig().getPath().getParent().toString()
-                set {_currentscript} to {_currentscript}.substring({_currentscript}.indexOf("scripts/") + 8)
+                set {_scriptsFolder} to Skript.getInstance().getScriptsFolder().toPath().toAbsolutePath()
+                set {_scriptParent} to {_origin}.getConfig().getPath().getParent().toAbsolutePath()
+                set {_relative} to {_scriptsFolder}.relativize({_scriptParent})
+                set {_currentscript} to {_relative}.toString().replace("\\", "/")
                 set {-scoped.sk::default_scope::%{_realscript}%} to {_currentscript}
             else if parse tags contains "y":
                 set {-scoped.sk::default_scope::%{_realscript}%} to {_realscript}
@@ -20,7 +23,7 @@ effect set default scope for scoped variables in current script to (a:current (x
         else if parse tags contains "c":
             set {-scoped.sk::default_scope::%{_realscript}%} to expr-2
             
-local function scoped_ctx(origin: object, event: object, var: object, script: object, mark: number) :: objects:
+local function scoped_ctx(origin: object, event: object, var: object, script: object, mark: number) :: strings:
     # origin + script
     set {_realscript} to script ({_origin}.getConfig().getFileName())
 
@@ -30,28 +33,28 @@ local function scoped_ctx(origin: object, event: object, var: object, script: ob
     else if {_mark} is 1:
         set {_scope} to {_script}
     else if {_mark} is 2:
-        set {_scope} to {_origin}.getConfig().getPath().getParent().toString()
-        set {_scope} to {_scope}.substring({_scope}.indexOf("scripts/") + 8)
+        set {_scriptsFolder} to Skript.getInstance().getScriptsFolder().toPath().toAbsolutePath()
+        set {_scriptParent} to {_origin}.getConfig().getPath().getParent().toAbsolutePath()
+        set {_relative} to {_scriptsFolder}.relativize({_scriptParent})
+        set {_scope} to {_relative}.toString().replace("\\", "/")
 
-    if {_var}.isLocal():
-        set {_scope} to "%{_origin}.getParent()%::%{_scope}%"
+    set {_prefix} to ""
+    set {_suffix} to ""
+    if {_var}.isLocal() is true:
+        set {_prefix} to "_"
+        
+    if {_var}.isEphemeral() is true:
+        set {_prefix} to "-"
+        
+    if {_var}.isList() is true:
+        set {_suffix} to "::*"
 
     # --- name ---
     set {_name} to {_var}.getName().toUnformattedString({_event})
     replace "::*" with "" in {_name}
-
-    # --- flags ---
-    set {_ctx::1scope} to {_scope}
-    set {_ctx::2name} to {_name}
-    set {_ctx::3list} to {_var}.isList()
-    if any:
-        {_var}.isLocal()
-        {_var}.isEphemeral()
-    then:
-        set {_ctx::4temp} to true
-    else:
-        set {_ctx::4temp} to false
-
+    
+    set {_ctx::1prefix} to {_prefix}
+    set {_ctx::2var} to "%{_scope}%::%{_name}%%{_suffix}%"
     return {_ctx::*}
 
 
@@ -60,106 +63,79 @@ expression scoped [variable] %$objects% [([with]in|from|by) (1:%-script%|2:curre
         expr-1 is an instance of Variable
         set {_var} to expr-1
         
-        # we use this to do local variables and to capture backing expression's script, could be made cleaner.
-        
-        # for locals we need to make it ephemeral, if name starts with _, if we could access previous event we could have made it really local, but this is the only way
+        # we use this to capture backing expression's script, could be made cleaner.
         # we use origin.toString 
         set {_origin} to SkriptLogger.getNode()
         continue
 
     get:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                return {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                return {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        # todo others
+        # we do this to remove the warning message
+        if {_ctx::1} is "_":
+            return variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            return variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                return {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                return {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            return variable "scoped::%{_ctx::2}%" with custom-event event
 
     set:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                set {-scoped::%{_ctx::1}%::%{_ctx::2}%::*} to change values
-            else:
-                set {-scoped::%{_ctx::1}%::%{_ctx::2}%} to change value
+        
+        if {_ctx::1} is "_":
+            set variable "_scoped::%{_ctx::2}%" with custom-event event to change values
+        else if {_ctx::1} is "-":
+            set variable "-scoped::%{_ctx::2}%" with custom-event event to change values
         else:
-            if {_ctx::3} is true:
-                set {scoped::%{_ctx::1}%::%{_ctx::2}%::*} to change values
-            else:
-                set {scoped::%{_ctx::1}%::%{_ctx::2}%} to change value
+            set variable "scoped::%{_ctx::2}%" with custom-event event to change values
 
     add:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                add change values to {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                add change values to {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        if {_ctx::1} is "_":
+            add change values to variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            add change values to variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                add change values to {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                add change values to {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            add change values to variable "scoped::%{_ctx::2}%" with custom-event event
 
     remove:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                remove change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                remove change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        if {_ctx::1} is "_":
+            remove change values from variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            remove change values from variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                remove change values from {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                remove change values from {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            remove change values from variable "scoped::%{_ctx::2}%" with custom-event event
 
     remove all:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                remove all change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                remove all change values from {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        if {_ctx::1} is "_":
+            remove all change values from variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            remove all change values from variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                remove all change values from {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                remove all change values from {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            remove all change values from variable "scoped::%{_ctx::2}%" with custom-event event
 
     delete:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                delete {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                delete {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        if {_ctx::1} is "_":
+            delete variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            delete variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                delete {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                delete {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            delete variable "scoped::%{_ctx::2}%" with custom-event event
 
     reset:
         set {_ctx::*} to scoped_ctx({_origin}, event, {_var}, expr-2, parse mark)
 
-        if {_ctx::4} is true:
-            if {_ctx::3} is true:
-                clear {-scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                clear {-scoped::%{_ctx::1}%::%{_ctx::2}%}
+        if {_ctx::1} is "_":
+            delete variable "_scoped::%{_ctx::2}%" with custom-event event
+        else if {_ctx::1} is "-":
+            delete variable "-scoped::%{_ctx::2}%" with custom-event event
         else:
-            if {_ctx::3} is true:
-                clear {scoped::%{_ctx::1}%::%{_ctx::2}%::*}
-            else:
-                clear {scoped::%{_ctx::1}%::%{_ctx::2}%}
+            delete variable "scoped::%{_ctx::2}%" with custom-event event
 
