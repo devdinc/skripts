@@ -1,6 +1,6 @@
-# todo registration process should use parse of event
-# todo tests should be isolated between .sk files, so before/after is triggered only if a test within that script is running
-# todo all tests within %script%
+# todo registration process should use parse of event, skript reflect has bugs so we are waiting for an update
+# todo tests should be isolated between .sk files, so before/after is triggered only if a test within that script is running, need to do parse first
+# todo all tests within %script%, remove with test name, need to do parse first
 using reflection
 
 import:
