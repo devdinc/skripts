@@ -103,7 +103,7 @@ test "pdc unspecified pdt float":
 
 
 test "pdc unspecified pdt double":
-
+    
     set scoped {-key} within test-world to 2.75
     assert scoped {-key} within test-world is 2.75 with "unspecified double failed"
 
@@ -116,11 +116,11 @@ test "pdc unspecified pdt string":
 
 test "pdc unspecified pdt tag_container":
 
-    set {_inner-key} to namespaced-key "plugin:inner"
-    set scoped {_inner-key} within test-world for pdt integer to 9
+    set {_inner-pdc} to new pdc from test-world
+    set {_inner-key} to namespaced-key "plugin:inner_key"
+    set {_inner-key} within {_inner-pdc} for pdt integer to 9
 
-    set {_container} to test-world's pdc
-    set scoped {-key} within test-world to {_container}
+    set scoped {-key} within test-world to {_inner-pdc}
 
-    set {_out} to scoped {-key} within test-world
-    assert scoped {_inner-key} within {_out} for pdt integer is 9 with "unspecified tag_container failed"
+    set {_out-pdc} to scoped {-key} within test-world
+    assert {_inner-key} within {_out-pdc} for pdt integer is 9 with "unspecified tag_container failed"

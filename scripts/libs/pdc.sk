@@ -40,16 +40,16 @@ local function coerce_pdt_value(pdt: object, value: object) :: object:
         return {_none}
 
     if {_pdt} is PersistentDataType.INTEGER:
-        return try new Integer({_value})
+        return try new Integer({_value}) if {_value} is an integer
 
     else if {_pdt} is PersistentDataType.BYTE:
-        return try new Byte({_value})
+        return try new Byte({_value}) if {_value} is an integer
 
     else if {_pdt} is PersistentDataType.SHORT:
-        return try new Short({_value})
+        return try new Short({_value}) if {_value} is an integer
 
     else if {_pdt} is PersistentDataType.LONG:
-        return try new Long({_value})
+        return try new Long({_value}) if {_value} is an integer
 
     else if {_pdt} is PersistentDataType.FLOAT:
         return try new Float({_value})
@@ -62,6 +62,9 @@ local function coerce_pdt_value(pdt: object, value: object) :: object:
 
     else if {_pdt} is PersistentDataType.BOOLEAN:
         return {_value} if {_value} is a boolean
+        
+    else if {_pdt} is PersistentDataType.TAG_CONTAINER:
+        return {_value} if {_value} is an instance of PersistentDataContainer
 
     else if {_pdt} is PersistentDataType.BYTE_ARRAY:
         return {_value}
