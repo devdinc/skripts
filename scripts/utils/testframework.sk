@@ -171,11 +171,9 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 native":
     event is instance of SkriptTestEvent
     send "Running devdinc tests" to console
     delete {-test.sk::*}
-    wait 1 tick
     set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
     set {_list::boolean} to false
     call custom event "skriptTest" with {_list::*}
-    wait 1 tick
     set {_tests::*} to all tests
     autorun {_tests::*}
     broadcast {-test.sk::*}
