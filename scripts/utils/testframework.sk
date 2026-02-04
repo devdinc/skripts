@@ -109,11 +109,11 @@ effect (1:|2:auto)run %objects%:
             call custom event "afterSkriptTest" with {_list::*}
             if any:
                 {_list::string} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-                size of ({_alltests::*} where ["%input%" is "%loop-value%"]) is 0 # todo
+                size of ({_alltests::*} where ["%input%" is "%loop-value%"]) is 0
             then:
                 add 1 to {_forgottenTestResults}
                 continue loop
-            add 1 to {_testFails} if size of {-test.sk::errors::%loop-value%::*} is greater than 0
+            add 1 to {_testFails} if size of {-test.sk::errors::%{_list::script}%.%{_list::string}%::*} is greater than 0
         loop {_scripts::*}:
             set {_list::script} to loop-value
             call custom event "afterSkriptTestAll" with {_list::*}
