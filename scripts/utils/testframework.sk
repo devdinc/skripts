@@ -179,7 +179,7 @@ test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 native":
     set {_tests::*} to all tests
     autorun {_tests::*}
     broadcast {-test.sk::*}
-    broadcast {_tests::*}
+    broadcast "%{_tests::*}%"
 
 effect:
     patterns:
