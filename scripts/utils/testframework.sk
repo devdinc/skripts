@@ -1,6 +1,3 @@
-# todo registration process should use parse of event, skript reflect has bugs so we are waiting for an update
-# todo tests should be isolated between .sk files, so before/after is triggered only if a test within that script is running, need to do parse first
-# todo all tests within %script%, remove with test name, need to do parse first
 using reflection
 
 import:
@@ -10,6 +7,7 @@ import:
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
     ch.njol.skript.log.SkriptLogger
+    java.lang.Runnable
 
 local effect sendTestFailMessage %string%[, %-string%]:
     trigger:
@@ -19,9 +17,23 @@ local effect sendTestFailMessage %string%[, %-string%]:
 event "skriptTest":
     pattern: [devdinc] test %string% [when <(.+)>]
     event-values: string, boolean
+    parse:
+        set {_origin} to SkriptLogger.getNode()
+        set {_realscript} to script ({_origin}.getConfig().getFileName())
+        # we don't have access to event-string or expr-1, so we can't do it in parse time.
+        # one thing we can do is cause a call to event to register tho.
+        set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+        set {_list::boolean} to false
+        create section with {_proxy} stored in {_functions::run}:
+            wait 2 ticks
+            call custom event "skriptTest" with {_list::*}
+        set {_proxy} to new proxy instance of Runnable using {_functions::*}
+        Bukkit.getGlobalRegionScheduler().execute(instance of plugin "Skript", {_proxy})
+        continue
     check:
+        set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
         set {_ok} to true
-        set {-test.sk::tests::%expr-1%} to "%expr-1%"
+        set {-test.sk::tests::%{_realscript}%.%expr-1%} to ["%expr-1%", {_realscript}] # registering
         if "%expr-1%" is event-string:
             set {_raw} to first element of regex-1
             if {_raw} is set:
@@ -33,28 +45,29 @@ event "skriptTest":
             
 event "beforeSkriptTest":
     pattern: [devdinc] before each test
-    event-values: string, boolean
+    event-values: string, boolean, script
     check:
         continue
         
 event "afterSkriptTest":
     pattern: [devdinc] after each test
-    event-values: string, boolean
+    event-values: string, boolean, script
     check:
         continue
         
 event "beforeSkriptTestAll":
     pattern: [devdinc] before all tests
+    event-values: script
     check:
         continue
         
 event "afterSkriptTestAll":
     pattern: [devdinc] after all tests
+    event-values: script
     check:
         continue
 
-plural expression all tests [with test name %-string%]:
-    return type: strings
+plural expression [all] tests [[with] [test] [name] %-string%] [[with][in] %-script%]:
     parse:
         set {_scoped} to false if expr-2 is not set
         continue
@@ -64,63 +77,77 @@ plural expression all tests [with test name %-string%]:
             loop {-test.sk::tests::*}:
                 if any:
                     expr-1 is not set
-                    loop-value is expr-1
+                    loop-value[0] is expr-1
                 then:
-                    add "%loop-value%" to {_r::*}
+                    add loop-value to {_r::*}
         else:
-            if {-test.sk::tests::%expr-1%} is set:
-                add "%expr-1%" to {_r::*}
+            loop {-test.sk::tests::*}:
+                loop-value[1] is expr-2
+                if any:
+                    expr-1 is not set
+                    loop-value[0] is expr-1
+                then:
+                    add loop-value to {_r::*}
 
         return {_r::*}
         
-effect (1:|2:auto)run [test][s] %strings%:
+effect (1:|2:auto)run %objects%:
     trigger:
         set {_tests::*} to expr-1
         set {_alltests::*} to all tests
-        call custom event "beforeSkriptTestAll"
         loop {_tests::*}:
-            set {_list::string} to loop-value
+            set {_list::script} to loop-value[1]
+            {_scripts::*} does not contain {_list::script}
+            add {_list::script} to {_scripts::*}
+            call custom event "beforeSkriptTestAll" with {_list::*}
+        loop {_tests::*}:
+            set {_list::string} to loop-value[0]
+            set {_list::script} to loop-value[1]
             set {_list::boolean} to true if parse mark is 2 else false
             call custom event "beforeSkriptTest" with {_list::*}
             call custom event "skriptTest" with {_list::*}
             call custom event "afterSkriptTest" with {_list::*}
             if any:
-                loop-value contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-                {_alltests::*} does not contain loop-value
+                {_list::string} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+                size of ({_alltests::*} where ["%input%" is "%loop-value%"]) is 0 # todo
             then:
                 add 1 to {_forgottenTestResults}
                 continue loop
             add 1 to {_testFails} if size of {-test.sk::errors::%loop-value%::*} is greater than 0
-        call custom event "afterSkriptTestAll"
+        loop {_scripts::*}:
+            set {_list::script} to loop-value
+            call custom event "afterSkriptTestAll" with {_list::*}
         set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
         if {_validTestAmount} is not 0:
             send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed." to console
         else if size of {_alltests::*} is greater than 0: # skipping if there is no initial hidden test 
             send "[<gold>Skript<reset>] <yellow>No tests found." to console
 
-condition last test result [of [test] %-string%] is a (1:pass|2:fail):
+condition last test result [of %-object%] is a (1:pass|2:fail):
     usable in:
         custom event "skriptTest"
     check:
         if expr-1 is not set:
             set {_test} to event.getEventValue("string")
+            set {_script} to event.getEventValue("script")
         else:
-            set {_test} to expr-1
-            stop if all tests does not contain expr-1
+            set {_test} to expr-1[0]
+            set {_script} to expr-1[1]
+            stop if size of (all tests where ["%input%" is "%expr-1%"]) is 0
         if all:
             parse mark is 1
-            size of {-test.sk::errors::%{_test}%::*} <= 0
+            size of {-test.sk::errors::%{_script}%.%{_test}%::*} <= 0
         then:
             continue
         else:
             if all:
                 parse mark is 2
-                size of {-test.sk::errors::%{_test}%::*} > 0
+                size of {-test.sk::errors::%{_script}%.%{_test}%::*} > 0
             then:
                 continue
 
 before each test:
-    delete {-test.sk::errors::%event-string%::*} 
+    delete {-test.sk::errors::%event-script%.%event-string%::*} 
     set {-test.sk::testblock} to test-block's type
     
 after each test:
@@ -129,7 +156,9 @@ after each test:
 on load:
     delete {-test.sk::*}
     wait 1 tick
-    run test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+    set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+    set {_list::boolean} to false
+    call custom event "skriptTest" with {_list::*}
     wait 1 tick
     set {_tests::*} to all tests
     autorun {_tests::*}
@@ -162,6 +191,7 @@ effect:
         
         set {_label} to "assert true" if parse tags contains "1" else "assert false"
         set {_test} to event.getEventValue("string")
+        set {_script} to event.getEventValue("script")
         if all:
             parse tags contains "1"
             {_ok} is false
@@ -181,7 +211,7 @@ effect:
             if parse tags does not contain "5":
                 sendTestFailMessage "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
             TestTracker.testFailed(expr-1)
-            add "%expr-1%" to {-test.sk::errors::%{_test}%::*}
+            add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
             if parse tags contains "3":
                 delay effect
 
@@ -190,10 +220,11 @@ effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail te
         custom event "skriptTest"
     trigger:
         set {_test} to event.getEventValue("string")
+        set {_script} to event.getEventValue("script")
         if parse tags does not contain "5":
             sendTestFailMessage "Test ""%{_test}%"" failed", expr-1
         TestTracker.testFailed(expr-1)
-        add "%expr-1%" to {-test.sk::errors::%{_test}%::*}
+        add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
         if parse tags contains "3":
             delay effect
         
@@ -205,14 +236,13 @@ effect stop auto [test] execution [here]:
         if {_bool} is true:
             delay effect
             
-expression [event(-| )]test:
-    return type: string
+expression event(-| )test:
 #    usable in:
 #        custom event "skriptTest"
     get:
-        return event.getEventValue("string")
+        return [event.getEventValue("string"), event.getEventValue("script")]
         
-condition %string% (1:is|2:is not|2:isn't) autorun:
+condition event(-| )test (1:is|2:is not|2:isn't) autorun:
     # usable in:
     #    custom event "skriptTest"
     check:
@@ -257,16 +287,18 @@ plural expression last parse logs:
     get:
         return {-test.sk::latestLogs::*}
 
-plural expression test errors[ for [test[s]] %-strings%]:
+plural expression test errors[ for %-objects%]:
     return type: strings
     get:
         if expr-1 is not set:
             set {_test} to event.getEventValue("string")
-            return {-test.sk::errors::%{_test}%::*}
+            set {_script} to event.getEventValue("script")
+            return {-test.sk::errors::%{_script}%.%{_test}%::*}
         else:
             loop ...expr-1:
-                set {_test} to loop-value
-                add {-test.sk::errors::%{_test}%::*} to {_r::*}
+                set {_test} to loop-value[0]
+                set {_script} to loop-value[1]
+                add {-test.sk::errors::%{_script}%.%{_test}%::*} to {_r::*}
             return {_r::*}
 
 expression [the] test(-| )world:
@@ -358,8 +390,8 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
     broadcast "<red>ERROR: auto execution not stopped"
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test":
-    set {_all::*} to all tests
-    assert true: {_all::*} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
+    set {_all::*} to all tests with test name "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
+    assert true: size of {_all::*} > 0
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests":
     set {_all::*} to all tests
@@ -373,7 +405,7 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between te
     assert true: size of test errors is 0
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
-    assert true: event-test is event-string
+    assert true: event-test[0] is event-string
     
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary A":
     set {-test.sk::temptestblocka} to test-block's type
@@ -398,5 +430,5 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A":
     fail test with no error message
     
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result B":
-    set {_test} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A"
-    assert true: last test result of {_test} is a fail
+    set {_test::*} to all tests with test name "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A"
+    assert true: last test result of {_test::1} is a fail

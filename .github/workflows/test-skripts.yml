@@ -54,16 +54,17 @@ jobs:
       
           curl -L --fail -o build/libs/skript-reflect/routines-paper.jar \
             https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
-      # Disable pdc for now, i want to remove skbee req
-      # Disable config reload
-      - name: Prepare scripts
-        run: |
-          mkdir -p tests/scripts
-          rsync -av scripts/ tests/scripts/
-          mv tests/scripts/libs/singlelinesection.sk tests/scripts/libs/0_singlelinesection.sk
-          rm -f tests/scripts/utils/testframework.sk
-          rm -f tests/scripts/utils/configreloadv2.sk
-          
+            
+      - name: Order scripts using restructure rules
+        uses: devdinc/restructure-action@v0.1.1
+        with:
+          source-ref: ${{ github.head_ref || github.ref_name }}
+          restructure-file: .restructure
+        
+        # Disable config reload (intentional)
+        - name: Remove config reload script
+          run: |
+            rm -f tests/scripts/utils/configreloadv2.sk
 
       - name: Run tests
         uses: devdinc/skript-test-action@v1.3
@@ -73,7 +74,7 @@ jobs:
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: 01d155a # 2.14.0-dev
+          skript_repo_ref: dev/feature
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
