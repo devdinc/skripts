@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p build/libs
           curl -L -o build/libs/skript-reflect.jar \
-            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.2/skript-reflect-2.6.2.jar
+            https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.3/skript-reflect-2.6.3.jar
             
       - name: Download Routines from JitPack
         run: |
@@ -60,6 +60,25 @@ jobs:
           mkdir -p tests/scripts
           rsync -av scripts/ tests/scripts/
           rm -f tests/scripts/utils/configreloadv2.sk
+      
+      - name: Force-load Skript native test suite
+        run: |
+          cat > tests/zzzz_force_native_tests.sk <<'EOF'
+          import:
+              ch.njol.skript.test.runner.SkriptTestEvent
+          
+          test "run devdinc tests":
+              event is instance of SkriptTestEvent
+              send "Running devdinc tests" to console
+
+              set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+              set {_list::boolean} to false
+
+              call custom event "skriptTest" with {_list::*}
+
+              set {_tests::*} to all tests
+              autorun {_tests::*}
+          EOF
 
       - name: Run tests
         uses: devdinc/skript-test-action@v1.3
