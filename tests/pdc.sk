@@ -2,125 +2,114 @@ import:
     java.util.HashMap
     
 on load:
-    set scoped {-key} to namespaced-key "plugin:test_pdt"
+    set scoped {-key} to "plugin:test_pdt"
     
 after each test:
-    delete scoped {-key} within test-world if scoped {-key} is set
+    event-script is current script
+    delete namespaced-key scoped {-key} within test-world if scoped {-key} is set
+    
+# since we use after each test we have to use devdinc test pattern here
 
-test "pdc basic set/get with typed pdt":
+devdinc test "pdc basic set/get with typed pdt":
 
-    set scoped {-key} within test-world for pdt integer to 42
-    assert scoped {-key} within test-world for pdt integer is 42 with "typed pdt get failed"
+    set namespaced-key scoped {-key} within test-world for pdt integer to 42
+    assert namespaced-key scoped {-key} within test-world for pdt integer is 42 with "typed pdt get failed"
 
+devdinc test "pdc overwrite typed value":
 
-test "pdc overwrite typed value":
+    set namespaced-key scoped {-key} within test-world for pdt string to "a"
+    set namespaced-key scoped {-key} within test-world for pdt string to "b"
 
-    set scoped {-key} within test-world for pdt string to "a"
-    set scoped {-key} within test-world for pdt string to "b"
+    assert namespaced-key scoped {-key} within test-world for pdt string is "b" with "overwrite failed"
 
-    assert scoped {-key} within test-world for pdt string is "b" with "overwrite failed"
+devdinc test "pdc delete typed value":
+    set namespaced-key scoped {-key} within test-world for pdt long to 100
+    delete namespaced-key scoped {-key} within test-world for pdt long
 
+    assert namespaced-key scoped {-key} within test-world for pdt long is not set with "delete failed"
 
-test "pdc delete typed value":
-    set scoped {-key} within test-world for pdt long to 100
-    delete scoped {-key} within test-world for pdt long
-
-    assert scoped {-key} within test-world for pdt long is not set with "delete failed"
-
-
-test "pdc object serialization (byte_array implicit)":
+devdinc test "pdc object serialization (byte_array implicit)":
 
     set {_obj} to new HashMap()
     {_obj}.put("a", 1)
     {_obj}.put("b", 2)
 
-    set scoped {-key} within test-world to {_obj}
+    set namespaced-key scoped {-key} within test-world to {_obj}
 
-    set {_out} to scoped {-key} within test-world
+    set {_out} to namespaced-key scoped {-key} within test-world
     assert {_out}.get("a") is 1 with "object deserialize failed (a)"
     assert {_out}.get("b") is 2 with "object deserialize failed (b)"
 
+devdinc test "pdc remove object via null":
 
-test "pdc remove object via null":
+    set namespaced-key scoped {-key} within test-world to "temp"
+    set namespaced-key scoped {-key} within test-world to null
 
-    set scoped {-key} within test-world to "temp"
-    set scoped {-key} within test-world to null
+    assert namespaced-key scoped {-key} within test-world is not set with "object remove via null failed"
 
-    assert scoped {-key} within test-world is not set with "object remove via null failed"
-
-
-test "pdc holder vs direct pdc equivalence":
+devdinc test "pdc holder vs direct pdc equivalence":
     set {_pdc} to test-world's pdc
 
-    set scoped {-key} within test-world for pdt byte to 7
-    assert scoped {-key} within {_pdc} for pdt byte is 7 with "direct pdc access failed"
+    set namespaced-key scoped {-key} within test-world for pdt byte to 7
+    assert namespaced-key scoped {-key} within {_pdc} for pdt byte is 7 with "direct pdc access failed"
 
+devdinc test "pdc boolean pdt":
 
-test "pdc boolean pdt":
+    set namespaced-key scoped {-key} within test-world for pdt boolean to true
+    assert namespaced-key scoped {-key} within test-world for pdt boolean is true with "boolean pdt failed"
 
-    set scoped {-key} within test-world for pdt boolean to true
-    assert scoped {-key} within test-world for pdt boolean is true with "boolean pdt failed"
+devdinc test "pdc default object missing returns none":
 
+    assert namespaced-key scoped {-key} within test-world is not set with "missing object did not return none"
 
-test "pdc default object missing returns none":
+devdinc test "pdc unspecified pdt boolean":
 
-    assert scoped {-key} within test-world is not set with "missing object did not return none"
+    set namespaced-key scoped {-key} within test-world to true
+    assert namespaced-key scoped {-key} within test-world is true with "unspecified boolean failed"
 
-test "pdc unspecified pdt boolean":
+devdinc test "pdc unspecified pdt byte":
 
-    set scoped {-key} within test-world to true
-    assert scoped {-key} within test-world is true with "unspecified boolean failed"
+    set namespaced-key scoped {-key} within test-world to 5
+    assert namespaced-key scoped {-key} within test-world is 5 with "unspecified byte failed"
 
+devdinc test "pdc unspecified pdt short":
 
-test "pdc unspecified pdt byte":
+    set namespaced-key scoped {-key} within test-world to 12
+    assert namespaced-key scoped {-key} within test-world is 12 with "unspecified short failed"
 
-    set scoped {-key} within test-world to 5
-    assert scoped {-key} within test-world is 5 with "unspecified byte failed"
+devdinc test "pdc unspecified pdt integer":
 
+    set namespaced-key scoped {-key} within test-world to 123
+    assert namespaced-key scoped {-key} within test-world is 123 with "unspecified integer failed"
 
-test "pdc unspecified pdt short":
+devdinc test "pdc unspecified pdt long":
 
-    set scoped {-key} within test-world to 12
-    assert scoped {-key} within test-world is 12 with "unspecified short failed"
+    set namespaced-key scoped {-key} within test-world to 123
+    assert namespaced-key scoped {-key} within test-world is 123 with "unspecified long failed"
 
+devdinc test "pdc unspecified pdt float":
 
-test "pdc unspecified pdt integer":
+    set namespaced-key scoped {-key} within test-world to 1.5
+    assert namespaced-key scoped {-key} within test-world is 1.5 with "unspecified float failed"
 
-    set scoped {-key} within test-world to 123
-    assert scoped {-key} within test-world is 123 with "unspecified integer failed"
-
-
-test "pdc unspecified pdt long":
-
-    set scoped {-key} within test-world to 123
-    assert scoped {-key} within test-world is 123 with "unspecified long failed"
-
-
-test "pdc unspecified pdt float":
-
-    set scoped {-key} within test-world to 1.5
-    assert scoped {-key} within test-world is 1.5 with "unspecified float failed"
-
-
-test "pdc unspecified pdt double":
+devdinc test "pdc unspecified pdt double":
     
-    set scoped {-key} within test-world to 2.75
-    assert scoped {-key} within test-world is 2.75 with "unspecified double failed"
+    set namespaced-key scoped {-key} within test-world to 2.75
+    assert namespaced-key scoped {-key} within test-world is 2.75 with "unspecified double failed"
 
 
-test "pdc unspecified pdt string":
+devdinc test "pdc unspecified pdt string":
 
-    set scoped {-key} within test-world to "hello"
-    assert scoped {-key} within test-world is "hello" with "unspecified string failed"
+    set namespaced-key scoped {-key} within test-world to "hello"
+    assert namespaced-key scoped {-key} within test-world is "hello" with "unspecified string failed"
 
-
-test "pdc unspecified pdt tag_container":
+devdinc test "pdc unspecified pdt tag_container":
 
     set {_inner-pdc} to new pdc from test-world
-    set {_inner-key} to namespaced-key "plugin:inner_key"
-    set {_inner-key} within {_inner-pdc} for pdt integer to 9
+    set {_inner-key} to "plugin:inner_key"
+    set namespaced-key {_inner-key} within {_inner-pdc} for pdt integer to 9
 
-    set scoped {-key} within test-world to {_inner-pdc}
+    set namespaced-key scoped {-key} within test-world to {_inner-pdc}
 
-    set {_out-pdc} to scoped {-key} within test-world
-    assert {_inner-key} within {_out-pdc} for pdt integer is 9 with "unspecified tag_container failed"
+    set {_out-pdc} to namespaced-key scoped {-key} within test-world
+    assert namespaced-key {_inner-key} within {_out-pdc} for pdt integer is 9 with "unspecified tag_container failed"

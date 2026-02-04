@@ -72,11 +72,10 @@ local function coerce_pdt_value(pdt: object, value: object) :: object:
     return {_none}
 
 
-expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
+expression [devdinc] [namespaced]( |-)key %string% [with]in %object%[ for %-object%]:
     parse:
-        set {_key} to expr-1
         set {_pdt} to expr-3
-
+        
         if any:
             "%{_pdt}%" contains "[devdinc] (pdt|[persistent data ]type)"
             "%{_pdt}%" contains "PersistentDataType"
@@ -86,7 +85,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
             continue
 
     get:
-        set {_key} to expr-1
+        set {_key} to NamespacedKey.fromString(expr-1, null) 
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
 
@@ -102,7 +101,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
                 loop scoped {-primitives::str::*}:
                     if {_typeId} is loop-value:
                         set {_pdt} to {_i}th element of scoped {-primitives::pdt::*}
-                        return {_pdc}.get({_key}, {_pdt})
+                        return try {_pdc}.get({_key}, {_pdt}) # try is used for if the key does not exist
                     add 1 to {_i}
 
             else:
@@ -117,9 +116,8 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
         else:
             return {_pdc}.get({_key}, {_pdt})
 
-
     set:
-        set {_key} to expr-1
+        set {_key} to NamespacedKey.fromString(expr-1, null) 
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
 
@@ -167,7 +165,7 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
 
 
     delete:
-        set {_key} to expr-1
+        set {_key} to NamespacedKey.fromString(expr-1, null) 
         set {_pdc} to expr-2.getPersistentDataContainer() if expr-2 is instance of PersistentDataHolder else expr-2
         set {_pdt} to expr-3
 
@@ -176,13 +174,6 @@ expression [devdinc] %namespacedkey% [with]in %object%[ for %-object%]:
         set {_typeKey} to NamespacedKey.fromString("%{_key}%..type", null) 
         {_pdc}.remove({_typeKey})
         {_pdc}.remove({_key})
-
-
-expression [devdinc] [namespaced]( |-)key %string%:
-    parse:
-        continue
-    get:
-        return NamespacedKey.fromString(expr-1, null)
 
 
 object property p[ersistent ]d[ata ]c[ontainer]:
