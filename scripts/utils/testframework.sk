@@ -165,7 +165,7 @@ on load:
     
 # force skript's native test to run
 test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 native":
-    send "Devdinc tests are running" to console"
+    send "Devdinc tests are running" to console
     event-test is [event.getEventValue("number"), event.getEventValue("number")]
     send "Running devdinc tests" to console
     delete {-test.sk::*}
