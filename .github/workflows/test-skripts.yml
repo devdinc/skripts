@@ -55,16 +55,11 @@ jobs:
           curl -L --fail -o build/libs/skript-reflect/routines-paper.jar \
             https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
             
-      - name: Order scripts using restructure rules
-        uses: devdinc/restructure-action@v0.1.1
-        with:
-          source-ref: ${{ github.head_ref || github.ref_name }}
-          restructure-file: .restructure
-        
-        # Disable config reload (intentional)
-        - name: Remove config reload script
-          run: |
-            rm -f tests/scripts/utils/configreloadv2.sk
+      - name: Prepare scripts
+        run: |
+          mkdir -p tests/scripts
+          rsync -av scripts/ tests/scripts/
+          rm -f tests/scripts/utils/configreloadv2.sk
 
       - name: Run tests
         uses: devdinc/skript-test-action@v1.3
