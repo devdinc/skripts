@@ -108,3 +108,32 @@ test "java call":
     set {_lam} to lambda:+ new URL("https://www.dummy2.com")
     set {_val} to {_lam}.get()
     assert {_val}.getClass().getSimpleName().equalsIgnoreCase("URL") is true 
+
+test "run multiline lambda with return":
+    set {_sup} to lambda:
+        set {_x} to "yes"
+        return {_x}
+    assert (run lambda {_sup}) is "yes" with "multiline lambda return failed"
+
+test "multiline lambda multiple runs":
+    clear {-functions::test::*}
+    set {-functions::test::varl} to 0
+    set {_sup} to lambda:
+        add 1 to {-functions::test::varl}
+        return {-functions::test::varl}
+    assert (run lambda {_sup}) is 1
+    assert (run lambda {_sup}) is 2
+
+test "multiline lambda with if":
+    set {_sup} to lambda:
+        if {_none} is not set:
+            return "yes"
+        return "no"
+    assert (run lambda {_sup}) is "yes" with "if control flow failed"
+
+test "multiline supplier":
+    set {_sup} to new supplier:
+        set {_a} to 1
+        return {_a}
+    assert (run lambda {_sup}) is 1
+

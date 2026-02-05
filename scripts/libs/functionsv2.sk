@@ -8,12 +8,11 @@ import:
     ch.njol.skript.lang.ExpressionList
     ch.njol.skript.lang.Variable
     ch.njol.skript.Skript
-    ch.njol.skript.lang.EffectSection
-    ch.njol.skript.lang.function.EffFunctionCall
-    ch.njol.skript.lang.SkriptParser
+    ch.njol.skript.lang.Effect
     ch.njol.skript.log.SkriptLogger
-    ch.njol.skript.lang.EffectSectionEffect
-    org.skriptlang.skript.registration.SyntaxRegistry
+    ch.njol.skript.config.SectionNode
+    ch.njol.skript.config.Node
+    java.util.ArrayList
 
 local function FextractArgs(vars: object) :: objects:
     if {_vars} is instance of ExpressionList:
@@ -29,71 +28,51 @@ local function isEffect(input:string) :: boolean:
         return false
     return true
 
-local function getFunctionReference(call: object) :: object:
-    set {_class} to {_call}.getClass()
-    set {_field} to {_class}.getDeclaredField("function")
-    {_field}.setAccessible(true)
-    return {_field}.get({_call})
-
 # equals effect.parse 
 local function parseEffectSilent(input: string) :: object:
-    set {_log} to SkriptLogger.startParseLogHandler()
-    set {_func} to EffFunctionCall.parse({_input})
-    if {_func} is set:
-        set {_ref} to getFunctionReference({_func})
-        if {_ref}.getReturnType() is set:
-            {_log}.close()
-            return {_none}
-        {_log}.close()
-        return {_func}
-    set {_section} to EffectSection.parse({_input}, null, null, null)
-    if {_section} is set:
-        {_log}.close()
-        return new EffectSectionEffect({_section})
-    set {_registry} to Skript.instance().syntaxRegistry()
-    set {_iterator} to {_registry}.syntaxes(SyntaxRegistry.EFFECT).iterator()
-    set {_effect} to SkriptParser.parse({_input}, {_iterator}, null)
+    set {_log} to SkriptLogger.startRetainingLog()
+    set {_effect} to Effect.parse({_input}, null)
     {_log}.clear()
     {_log}.close()
     return {_effect}
-    
-expression build lambda args %objects% body %string% noreturn %boolean% script %script%:
+
+expression build lambda args %objects% body %strings% noreturn %boolean% script %script%:
     get:
         set {_functionsv2.sk::ctx::args::*} to expr-1
-        set {_functionsv2.sk::ctx::body} to expr-2
+        set {_functionsv2.sk::ctx::body::*} to expr-2
         set {_functionsv2.sk::ctx::noreturn} to expr-3
         set {_functionsv2.sk::ctx::script} to expr-4
         set {_functionsv2.sk::ctx::arity} to size of {_functionsv2.sk::ctx::args::*}
         if {_functionsv2.sk::ctx::noreturn} is true:
             if {_functionsv2.sk::ctx::arity} is 0:
-                set {_functionsv2.sk::ctx::functions::run} to line section {_functionsv2.sk::ctx::body} with args {_this}
+                set {_functionsv2.sk::ctx::functions::run} to line section {_functionsv2.sk::ctx::body::*} with args {_this}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Runnable using {_functionsv2.sk::ctx::functions::*}
             else if {_functionsv2.sk::ctx::arity} is 1:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body::*} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Consumer using {_functionsv2.sk::ctx::functions::*}
             else:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::accept} to line section {_functionsv2.sk::ctx::body::*} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of BiConsumer using {_functionsv2.sk::ctx::functions::*}
         else:
-
+            set {_functionsv2.sk::ctx::realbody::*} to "return %{_functionsv2.sk::ctx::body::*}%" if size of {_functionsv2.sk::ctx::body::*} is 1 else {_functionsv2.sk::ctx::body::*}
             if {_functionsv2.sk::ctx::arity} is 0:
-                set {_functionsv2.sk::ctx::functions::get} to line section "return %{_functionsv2.sk::ctx::body}%" with args {_this} in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::get} to line section {_functionsv2.sk::ctx::realbody::*} with args {_this} in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Supplier using {_functionsv2.sk::ctx::functions::*}
             else if {_functionsv2.sk::ctx::arity} is 1:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::apply} to line section {_functionsv2.sk::ctx::realbody::*} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of Function using {_functionsv2.sk::ctx::functions::*}
             else:
                 set {_functionsv2.sk::ctx::proxy} to raw expression of {_this}
-                set {_functionsv2.sk::ctx::functions::apply} to line section "return %{_functionsv2.sk::ctx::body}%" with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
+                set {_functionsv2.sk::ctx::functions::apply} to line section {_functionsv2.sk::ctx::realbody::*} with args "%{_functionsv2.sk::ctx::proxy}%", "%{_functionsv2.sk::ctx::args::1}%", "%{_functionsv2.sk::ctx::args::2}%" in {_functionsv2.sk::ctx::script}
                 set {_functionsv2.sk::ctx::proxy} to new proxy instance of BiFunction using {_functionsv2.sk::ctx::functions::*}
         return {_functionsv2.sk::ctx::proxy}
 
 expression:
     patterns:
-        lambda[ %-objects%]\:(1: |2:- |3:+ )<(.+)>
+        [new] lambda[ %-objects%]\:(1: |2:- |3:+ )<(.+)>
     parse:
         set {_functionsv2.sk::ctx::vars} to expr-1
         set {_functionsv2.sk::ctx::expr} to first element of regex-1
@@ -111,8 +90,8 @@ expression:
         
 expression:
     patterns:
-        (1:supplier|1:getter|2:runnable|2:runner)[ %-objects%]\: <(.+)>
-        (3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier) %-objects%\: <(.+)>
+        [new] (1:supplier|1:getter|2:runnable|2:runner)[ %-objects%]\: <(.+)>
+        [new] (3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier) %-objects%\: <(.+)>
     parse:
         set {_functionsv2.sk::ctx::vars} to expr-1
         set {_functionsv2.sk::ctx::expr} to first element of regex-1
@@ -150,18 +129,131 @@ expression:
     get:
         return build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
 
+local function walk(n: object, list: object) :: objects:
+    if {_list} is not set:
+        set {_list} to new ArrayList()
+    loop ...{_n}:
+        {_list}.add(loop-value)
+        if loop-value is instance of SectionNode:
+            walk(loop-value, {_list})
+    return ...{_list}
+
+condition set %object% to [new] lambda[ %-objects%](1:|2:-|3:+):
+    parse:
+        set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
+        set {_functionsv2.sk::ctx::script} to script ({_functionsv2.sk::ctx::origin}.getConfig().getFileName())
+        if {_functionsv2.sk::ctx::script} is not set: # likely inner lambda
+            set {_functionsv2.sk::ctx::script} to current script
+        set {_functionsv2.sk::ctx::vars} to expr-2
+        set {_functionsv2.sk::ctx::originindent} to {_functionsv2.sk::ctx::origin}.[Node]getIndentation()
+        set {_functionsv2.sk::ctx::nodes::*} to walk({_functionsv2.sk::ctx::origin}, {_none})
+        loop {_functionsv2.sk::ctx::nodes::*}:
+            set {_functionsv2.sk::ctx::indent} to loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 4) if {_functionsv2.sk::ctx::originindent} starts with " " else loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 1) 
+            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::indent}%%loop-value.getKey()%"
+            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:" if loop-value is instance of SectionNode
+            add {_functionsv2.sk::ctx::key} to {_functionsv2.sk::ctx::expr::*} 
+            {_functionsv2.sk::ctx::key}.trim() starts with "return"
+            set {_functionsv2.sk::ctx::noreturn} to false if parse mark is 1
+                
+        set {_functionsv2.sk::ctx::noreturn} to true if parse mark is 2
+        set {_functionsv2.sk::ctx::noreturn} to false if parse mark is 3
+        set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
+        continue
+    check:
+        set raw expression of expr-1 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
+
+condition set %object% to [new] (1:supplier|1:getter|2:runnable|2:runner|3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier)[ %-objects%]:
+    parse:
+        set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
+        set {_functionsv2.sk::ctx::script} to script ({_functionsv2.sk::ctx::origin}.getConfig().getFileName())
+        if {_functionsv2.sk::ctx::script} is not set:
+            set {_functionsv2.sk::ctx::script} to current script
+
+        set {_functionsv2.sk::ctx::vars} to expr-2
+        set {_functionsv2.sk::ctx::originindent} to {_functionsv2.sk::ctx::origin}.[Node]getIndentation()
+        set {_functionsv2.sk::ctx::nodes::*} to walk({_functionsv2.sk::ctx::origin}, {_none})
+
+        loop {_functionsv2.sk::ctx::nodes::*}:
+            set {_functionsv2.sk::ctx::indent} to loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 4) if {_functionsv2.sk::ctx::originindent} starts with " " else loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 1) 
+            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::indent}%%loop-value.getKey()%"
+            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:" if loop-value is instance of SectionNode
+            add {_functionsv2.sk::ctx::key} to {_functionsv2.sk::ctx::expr::*} 
+
+        set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
+
+        set {_functionsv2.sk::ctx::noreturn} to true
+        if any:
+            parse mark is 1
+            parse mark is 4
+            parse mark is 6
+        then:
+            set {_functionsv2.sk::ctx::noreturn} to false
+        set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
+        if any:
+            parse mark is 1
+            parse mark is 2
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} > 0:
+                stop
+        if any:
+            parse mark is 3
+            parse mark is 4
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} is 0:
+                stop
+        if any:
+            parse mark is 5
+            parse mark is 6
+        then:
+            if size of {_functionsv2.sk::ctx::args::*} is not 2:
+                stop
+
+        continue
+
+    check:
+        set raw expression of expr-1 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
+
 expression run[ lambda] %object%[ with %-objects%]:
     get:
         set {_functionsv2.sk::ctx::args::*} to expr-2
         expr-1 is instance of Runnable:
             expr-1.run()
+            return {_none}
         else if expr-1 is instance of Consumer:
             expr-1.accept(expr-2)
+            return {_none}
         else if expr-1 is instance of BiConsumer:
             expr-1.accept({_functionsv2.sk::ctx::args::1}, {_functionsv2.sk::ctx::args::2})
+            return {_none}
         else if expr-1 is instance of Function:
             return expr-1.apply(expr-2)
         else if expr-1 is instance of BiFunction:
             return expr-1.apply({_functionsv2.sk::ctx::args::1}, {_functionsv2.sk::ctx::args::2})
         else if expr-1 is instance of Supplier:
             return expr-1.get()
+            
+effect run[ lambda] %object%[ with %-objects%]:
+    trigger:
+        set {_args::*} to expr-2
+        if expr-1 is instance of Runnable:
+            expr-1.run()
+        else if expr-1 is instance of Consumer:
+            expr-1.accept({_args::*})
+        else if expr-1 is instance of BiConsumer:
+            expr-1.accept({_args::1}, {_args::2})
+        else if expr-1 is instance of Function:
+            expr-1.apply({_args::*})
+        else if expr-1 is instance of BiFunction:
+            expr-1.apply({_args::1}, {_args::2})
+        else if expr-1 is instance of Supplier:
+            expr-1.get()
+
+effect return %object%:
+    parse:
+        set {_functionsv2.sk::ctx::node} to SkriptLogger.getNode()
+        if "%{_functionsv2.sk::ctx::node}%" contains "lambda." or "supplier." or "applier." or "getter." or "function" or "bifunction" or "biapplier":
+            continue
+    trigger:
+        broadcast "shouldn't ever run"
+
+

@@ -31,3 +31,7 @@ test "new single line section expression":
     set {_section} to single line section "set {_a} to 2", "set {_c} to 3", "return {_a} + {_b} + {_c}"
     run section {_section} and store result in {_n}
     assert {_n} is 5 with error "single line section bug 7"
+    
+    set {_section} to single line section "if {_none} is not set:", "    return {_x} + {_z}" with args "{_x}", "{_z}"
+    run section {_section} with 15, 10 and store result in {_n}
+    assert {_n} is 25 with "single line section bug 8"
