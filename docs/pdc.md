@@ -1,7 +1,4 @@
-
 # Persistent Data Container (PDC) Utility Expressions for Skript
-
-> **WARNING:** Read migration notes carefully before upgrading.
 
 ---
 
@@ -11,94 +8,98 @@ This document describes a set of Skript expressions and helpers for interacting 
 
 It supports:
 
-- Native `PersistentDataType` (PDT) values  
+- Native `PersistentDataType` (PDT) values
 - Arbitrary object storage via Java serialization into `BYTE_ARRAY`
-
----
-
-## Migration Notice (Base64 Removed)
-
-Previous versions serialized arbitrary objects using Base64 encoding and stored them as `STRING` values.
-
-**This implementation no longer uses Base64.**
-
-Arbitrary objects are now:
-
-- Serialized directly using `BukkitObjectOutputStream`
-- Stored natively as `PersistentDataType.BYTE_ARRAY`
-
-This is a **storage-format change only**.  
-Arbitrary object support remains fully supported.
-
-### Required User Action
-
-- Existing Base64-encoded PDC values are **not compatible**
-- Stored data must be migrated or deleted
-
-Scripts do **not** require syntax changes, but values written by older versions will not deserialize correctly.
 
 ---
 
 ## Requirements
 
-- Paper server  
-- Skript  
-- skript-reflect  
+- Paper server
+- Skript
+- skript-reflect
 
 ---
 
 ## Key Features
 
-### 1. Unified `key in pdc` Expression
+### 1. Unified `key … in pdc` Expression
 
 - Read, write, and delete PDC entries using a single expression
 - Automatically resolves:
   - `PersistentDataHolder` → `PersistentDataContainer`
 
+---
+
 ### 2. Native and Arbitrary Object Storage
 
-- When a `PersistentDataType` is provided:  
-  → Values are stored natively
-- When omitted:  
-  → Values are serialized and stored as `BYTE_ARRAY`
+- When a `PersistentDataType` is provided:
+  → Values are stored natively using that PDT
+- When omitted:
+  → Values are serialized and stored as `PersistentDataType.BYTE_ARRAY`
 
-### 3. NamespacedKey Convenience Expression
+---
 
-- Allows creation of `NamespacedKey` from strings such as:
-  - `plugin:key`
+### 3. Built-in NamespacedKey Handling
+
+There is **no standalone NamespacedKey expression**.
+
+Instead, namespaced keys are handled directly by the main expression using string input.
+
+Key strings must be in the form:
+
+```
+
+namespace:key
+
+````
+
+Example:
+
+```skript
+"minecraft:foo"
+"myplugin:data"
+````
+
+---
 
 ### 4. Safety and Validation
 
-- Runtime validation ensures correct types for:
-  - Key
-  - Container
-  - PersistentDataType
-- Invalid expressions fail silently to avoid hard Skript errors
+* Runtime validation ensures correct types for:
+
+  * Key string
+  * Container / holder
+  * PersistentDataType (if provided)
+* Invalid expressions fail silently to avoid hard Skript errors
 
 ---
 
 ## Serialization Notes
 
-- Arbitrary objects are serialized using `BukkitObjectOutputStream`
-- Data is stored directly as `byte[]` via `PersistentDataType.BYTE_ARRAY`
-- Objects **must** implement `java.io.Serializable`
-
-### Compared to Base64
-
-- Lower overhead
-- No string encoding or decoding
-- Direct compatibility with Bukkit PDC APIs
+* Arbitrary objects are serialized using `BukkitObjectOutputStream`
+* Data is stored directly as `byte[]` via `PersistentDataType.BYTE_ARRAY`
+* Objects **must** implement `java.io.Serializable`
 
 ---
 
 ## Syntax Summary
+
+### Core Expression
+
+```skript
+expression [devdinc] [namespaced]( |-)key %string% [with]in %pdcholder/pdc% [for %-pdt%]
+```
+
+---
 
 ### Reading
 
 ```skript
 set {_value} to key "plugin:test" within player's pdc
 set {_value} to key "plugin:test" in player's pdc for pdt string
-````
+```
+
+---
 
 ### Writing
 
@@ -106,6 +107,8 @@ set {_value} to key "plugin:test" in player's pdc for pdt string
 set key "plugin:test" within player's pdc to {_object}
 set key "plugin:test" in player's pdc for pdt integer to 5
 ```
+
+---
 
 ### Deleting
 
@@ -115,10 +118,11 @@ delete key "plugin:test" within player's pdc
 
 ---
 
-## Notes
+## Behavior Notes
 
 * If no `PersistentDataType` is specified, `BYTE_ARRAY` storage is used
-* Deleting a key or setting its value to `null` removes the entry
+* Setting a key to `null` removes the entry
+* Deleting a key removes it regardless of storage type
 
 ---
 
@@ -126,4 +130,7 @@ delete key "plugin:test" within player's pdc
 
 * Deserialization failures will propagate runtime errors
 * Class definition changes may break previously serialized data
-* Old Base64-encoded values must be migrated manually
+* Stored objects must remain compatible with Java serialization
+
+---
+

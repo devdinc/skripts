@@ -31,16 +31,17 @@ All generated lambdas are real Java proxy instances.
 
 ---
 
-## Core Lambda Syntax
+## Core Lambda Syntax (Single-Line)
 
 ### 1. Returning Lambda
 
 ```skript
 lambda [<variables>]: <expression>
-```
+````
 
 * Returns a value
 * Automatically mapped to a Java functional interface
+* Return vs effect behavior is auto-detected
 
 ---
 
@@ -63,6 +64,67 @@ lambda [<variables>]:+ <expression>
 
 * Forces returning behavior
 * Useful when the body might otherwise be parsed as an effect
+
+---
+
+## Multiline Lambdas (Section-Based)
+
+Lambdas may also be written as **multiline sections**.
+These allow more complex logic while still compiling into Java functional interfaces.
+
+Multiline lambdas are created using **typed aliases** (`new runnable:`, `new function {_x}:`, etc.).
+
+---
+
+### Multiline Non-Returning Lambda
+
+Maps to:
+
+* `Runnable`
+* `Consumer<T>`
+* `BiConsumer<T, U>`
+
+depending on arity.
+
+```skript
+set {_task} to new runnable:
+    broadcast "working"
+    broadcast "still working"
+```
+
+Rules:
+
+* Produces **no return value**
+* All lines must be **effects**
+* `return` is not allowed
+
+---
+
+### Multiline Returning Lambda
+
+Multiline returning lambdas **must use the `return` effect**.
+The lambda does **not** infer a return value from the last line.
+
+```skript
+set {_double} to new function {_x}:
+    broadcast "doubling %{_x}%"
+    return {_x} * 2
+```
+
+Rules:
+
+* `return <expression>` is **mandatory**
+* The final line does **not** need to be an expression
+* Effects may appear anywhere before `return`
+* Multiple control-flow paths may use `return`
+
+Maps to:
+
+* `Supplier<T>`
+* `Function<T, R>`
+* `BiFunction<T, U, R>`
+
+based on arity.
 
 ---
 
@@ -93,7 +155,9 @@ The target Java interface is selected based on **parameter count** and **return 
 
 > Lambdas with more than **2 parameters are not supported**.
 
-### Workaround for Higher Arity
+---
+
+## Workaround for Higher Arity
 
 Pass a single composite object instead:
 
@@ -196,7 +260,8 @@ biaccepter {_a}, {_b}:
 
 ```skript
 set {_f} to function {_x}: {_x} * 2
-set {_r} to runnable: broadcast "hello"
+set {_r} to runnable:
+    broadcast "hello"
 ```
 
 ---
@@ -239,38 +304,38 @@ set {_adder} to lambda {_m}:- {_m}.values().stream().forEach({_inlineforeach})
 
 ## Limitations
 
-* Lambdas are **strictly single-line**
-* Returning lambdas (`:` / `:+`) **cannot contain effects**
-* Non-returning lambdas (`:-`) **cannot contain expressions**
-* Non-returning lambdas **cannot return values**
+* Lambdas may be **single-line or multiline**
+* Single-line lambdas infer return vs effect behavior
+* Multiline returning lambdas **require `return`**
+* Multiline non-returning lambdas **must not return**
+* Lambdas are limited to **0–2 parameters**
 * Variable lists as parameters are **not supported**
 * Arrays are unreliable inside lambdas:
 
   * Indexing (`[n]`) does not work
   * Use `spread(...)` before passing arrays
-* Imported classes or complex expressions **may fail inline**
+* Imported classes or complex expressions may fail inline
 
-  * Mitigations:
-
-    * Explicitly use `:+` or `:-`
-    * Wrap logic in a normal function and call it
+  * Prefer multiline lambdas
+  * Or wrap logic in a normal Skript function
 
 ---
 
 ## Notes
 
-* Return vs effect behavior is **auto-detected** unless overridden with `:-` or `:+`
+* Single-line lambdas auto-detect return vs effect
+* Multiline lambdas require explicit intent
 * Lambdas are real Java proxy objects and fully compatible with:
 
   * Java streams
   * Java APIs
   * skript-reflect usage
+* Experimentally, local values are passed into lambda sections. Use with care.
 
 ---
-
-* Experimentally local values are passed into the section. You can use local values, but be careful.
 
 ## Planned
 
 * Additional utility expressions (e.g., `for each` helpers)
 * These will be introduced in **separate files**
+

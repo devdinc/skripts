@@ -2,92 +2,107 @@
 
 ## Overview
 
-This document describes a **self-contained runtime testing framework for Skript**. The framework replicates much of Skript’s internal development test suite while extending it with runtime-safe execution, reflection-based inspection, and deterministic event-driven control.
+## Compatibility with Skript Native Tests
 
-Unlike Skript’s native internal tests, this framework:
+This framework **is compatible** with Skript’s native **quickTest** and **test-action** systems, but with important limitations.
 
-* Runs entirely at runtime
-* Is safe for production servers
-* Supports both **automatic (autorun)** and **manual** execution
-* Tracks failures centrally with optional console suppression
+### What Actually Happens
 
-All framework state is stored under the `-test.sk::*` namespace.
+When using Skript’s native test suite:
+
+* Skript’s own `test` event **overrides** the framework’s `skriptTest` event
+* Only features that exist in Skript’s native test environment are available
+* Framework-specific extensions become unavailable
+
+As a result:
+
+* Core assertions such as:
+
+```skript
+assert <condition>
+```
+
+remain usable
+
+* Framework-specific features such as:
+
+```skript
+stop auto test execution here
+```
+
+are **not usable** under quickTest or native `test-action`
+
+* Extended event-values (`event-test`, autorun flag, script scoping) may be missing or incomplete
+
+### Mitigation Strategy
+
+To regain full framework behavior, simply **prefix your existing test with `devdinc`**:
+
+```skript
+devdinc test "<name>"
+```
+
+This forces execution through the framework’s custom event pipeline and restores:
+
+* Full event-values
+* Autorun vs manual execution control
+* Reflection-backed features
+
+### Recommendation
+
+* **Prefer Skript’s native test suite when possible** for maximum compatibility
+* Use `devdinc test` only when you need:
+
+  * Script scoping
+    n  * Autorun control
+  * Parser / log inspection
+  * Extended lifecycle hooks
+
+---
+
+This document describes a **runtime testing framework for Skript** implemented entirely in Skript using **custom events, reflection, and controlled parser interaction**.
+
+The framework is designed to mirror key aspects of Skript’s internal development test suite while remaining:
+
+* Safe to execute at runtime
+* Deterministic and event-driven
+* Compatible with production servers
+* Capable of testing **syntax, parsing, and runtime behavior**
+
+All framework state is stored under the namespace:
+
+```
+-test.sk::*
+```
 
 ---
 
 ## Design Goals
 
-The framework is intentionally minimal and predictable.
+The framework is intentionally strict and explicit.
 
-It is designed to:
+It aims to:
 
 * Allow tests to be written directly in `.sk` files
-* Achieve functional parity with Skript’s internal test actions where feasible
-* Enable meta-testing of Skript syntax and parser behavior
-* Support fail-fast behavior with optional non-halting assertions
+* Associate tests **with the script they originate from**
+* Support both **automatic (autorun)** and **manual** execution paths
+* Provide before/after hooks at both **per-test** and **per-script** levels
 * Prevent state leakage between tests
-
----
-
-## Feature Parity with Skript’s Native Test Suite
-
-| Feature                   | Status       | Description                                           |
-| ------------------------- | ------------ | ----------------------------------------------------- |
-| **Test structure**        | Achieved     | `test %string%` mirrors native test declarations      |
-| **Conditional execution** | Achieved     | `when <condition>` skips tests dynamically            |
-| **Assertions**            | Achieved     | `assert <condition>` and `assert <condition> to fail` |
-| **Parser inspection**     | Experimental | Parse sections and log capture                        |
-| **Test entities**         | Partial      | More information below                                |
-
-## Skript Native Test Tracker Integration (Experimental)
-
-This framework includes **experimental support for Skript’s native `TestTracker`**.
-
-### What This Means
-
-* Test failures are forwarded to Skript’s internal test tracker
-* Failures appear in Skript’s native reporting pipeline
-* CI-style tooling can observe results
-
-### Important Limitations
-
-**This does NOT imply full parity with Skript’s internal test framework.**
-
-Many test expressions and effects from this script are **not available** via test %string% pattern when using Skript's quickTest.
-
-You **must** use:
-
-```skript
-devdinc test %string%
-```
-
----
-
-### Experimental Status
-
-Test tracker support is:
-
-* **Experimental**
-
-It may:
-
-* Break across Skript versions
-* Be disabled in future releases
-
-No compatibility guarantees are provided.
+* Enable parser-level testing via reflection
 
 ---
 
 ## High-Level Architecture
 
-The framework is built around four core principles:
+The framework is built around the following principles:
 
-1. **Tests are custom events**
-2. **Tests are registered implicitly at parse time**
-3. **Execution is event-driven, not inline**
-4. **Failures are tracked centrally per test**
+1. **Tests are custom events** (`skriptTest`)
+2. **Tests are registered at parse time**
+3. **Execution is scheduled, not inline** (scheduler + proxy Runnable)
+4. **Each test is scoped to its source script**
+5. **Failures are tracked per test, per script**
 
-Each test executes inside a dedicated `skriptTest` event context.
+Execution is fully event-driven and never relies on direct control flow from the script loader.
 
 ---
 
@@ -96,38 +111,72 @@ Each test executes inside a dedicated `skriptTest` event context.
 ### Syntax
 
 ```skript
-test "<test name>" [when <condition>]:
+devdinc test "<test name>" [when <condition>]:
     <test body>
 ```
 
-* Tests are registered automatically when the script is parsed
-* The optional `when` condition is evaluated immediately before execution
-
-### Event Context
-
-Inside a test, the framework provides:
-
-* **`event-string` / `event-test`**
-  Fully-qualified test identifier:
-
-  ```
-  <test name>
-  ```
-
-* **`event-boolean`**
-  Indicates whether the test is running in **autorun mode**
+* Tests are registered automatically during parsing
+* `when <condition>` is evaluated immediately before execution
+* Each test is associated with its **originating script**
 
 ---
 
-## Test Registration
+### Syntax
 
-Tests are registered automatically at parse time. No explicit registration step is required.
+```skript
+devdinc test "<test name>" [when <condition>]:
+    <test body>
+```
 
-Internal storage format:
+* Tests are registered automatically during parsing
+* `when <condition>` is evaluated immediately before execution
+* Each test is associated with its **originating script**
+
+---
+
+## Test Identity & Scoping
+
+Each test is uniquely identified by **both its name and its source script**.
+
+Internal representation:
 
 ```
--test.sk::tests::<test name>
+[event-string, event-script]
 ```
+
+This ensures:
+
+* No collisions between scripts
+* Deterministic execution order
+* Correct isolation and error attribution
+
+---
+
+Internally, each test is stored as a **pair**:
+
+```
+[<test name>, <script>]
+```
+
+This enables:
+
+* Multiple scripts defining tests with identical names
+* Script-scoped test execution
+* Accurate isolation and error tracking
+
+---
+
+## Test Registration (Parse-Time)
+
+Tests are registered during the **parse phase**, not execution.
+
+Registration format:
+
+```
+-test.sk::tests::<script>::<test name> = [<test name>, <script>]
+```
+
+A hidden sentinel test is used during load to guarantee full registration before autorun begins.
 
 ---
 
@@ -137,30 +186,33 @@ Internal storage format:
 
 On script load:
 
-1. Previous global test state is cleared
-2. A hidden sentinel test establishes autorun context
-3. All registered tests are discovered
-4. Tests are executed in autorun mode
+1. Global test state is cleared
+2. A sentinel test establishes autorun context
+3. All tests across all scripts are discovered
+4. Tests are executed in load order
 
-Autorun execution passes `true` as the event-boolean value.
+Autorun tests receive:
+
+```
+event-boolean = true
+```
 
 ---
 
 ### Manual Execution
 
 ```skript
-run test(s) %strings%
+run test(s) %objects%
 ```
 
-* Accepts one or more **fully-qualified test identifiers**
-* Clears prior error state for each test
-* Executes tests outside autorun mode
-
-Identifier format:
+* Accepts one or more `[test name, script]` objects
+* Runs tests with:
 
 ```
-<test name>
+event-boolean = false
 ```
+
+* Autorun-only tests may opt out (see below)
 
 ---
 
@@ -169,181 +221,147 @@ Identifier format:
 ### Expression
 
 ```skript
-all tests [with test name %-string%]
+all tests [with test name %-string%] [[in] %-script%]
 ```
 
 ### Behavior
 
 * No arguments → all tests from all scripts
-* `with test name <string>` → exact match only
+* `with test name` → exact match
+* `in <script>` → restricts to a single script
 
-Returned values are fully-qualified test identifiers.
+Return type:
+
+```
+[test name, script]
+```
 
 ---
 
 ## Assertions
 
-Assertions validate test behavior and record failures.
+Assertions validate runtime conditions and record failures.
 
-### Syntax Variants
+### Syntax
 
 ```skript
 assert true: <condition>
 assert false: <condition>
-assert <condition> [to fail]
+assert <condition> to fail
 ```
 
-### Optional Modifiers
+### Modifiers
 
-* **`without halting`**
-  Records failure but continues execution
+* `without halting` – records failure but continues
+* `with error message "<msg>"` – prints formatted output
+* `with no error message` – suppresses console output
 
-* **`with error message "<message>"`**
-  Prints formatted failure output
+Assertions are only valid inside `skriptTest`.
 
-* **`with no error message`**
-  Suppresses console output entirely
+---
 
-Assertions are only valid inside a test context.
+## Explicit Failure
+
+```skript
+fail test
+fail test with error message "<msg>"
+```
+
+* Records a failure immediately
+* Halts execution unless `without halting` is used
 
 ---
 
 ## Error Tracking
 
+Errors are tracked per **test + script**:
+
+```
+-test.sk::errors::<script>::<test name>::*
+```
+
 ### Expression
 
 ```skript
-test errors [for %-strings%]
+test errors [for %-objects%]
 ```
 
-* Returns all recorded failures for the current test
-* Includes:
+* Without arguments → current test
+* With objects → aggregated errors
 
-  * Assertion failures
-  * Explicit `fail test` invocations
-  * Internally tracked errors
-
-Errors are reset between tests and never leak across executions.
+Errors are cleared before each test and never leak.
 
 ---
 
-## Explicit Test Failure
+## Event Values (Complete Reference)
 
-### Syntax
+Every test and lifecycle hook executed by this framework exposes the following **event-values**:
 
-```skript
-fail test
-fail test with error message "<message>"
-```
+| Event Value     | Type    | Meaning                        |
+| --------------- | ------- | ------------------------------ |
+| `event-string`  | string  | Test name                      |
+| `event-script`  | script  | Script that defines the test   |
+| `event-boolean` | boolean | Autorun flag                   |
+| `event-test`    | object  | `[event-string, event-script]` |
 
-Behavior:
+### Availability
 
-* Records a failure immediately
-* Optionally prints formatted output
-* Halts execution unless `without halting` is specified
+* All values are guaranteed when using `devdinc test`
+* Under Skript native tests, availability depends on Skript’s test runner
 
-## Autorun Execution Semantics
+---
 
-### Autorun Flag (Test Context)
+---------------|----------|--------|
+| `event-string`   | string   | Test name |
+| `event-script`   | script   | Originating script |
+| `event-boolean`  | boolean  | Autorun flag |
+| `event-test`     | object   | `[event-string, event-script]` |
 
-**Expression:**
+These values are **guaranteed** only when using `devdinc test`.
+
+They are **undefined** when running via quickTest or native test-action.
+
+---
+
+## Autorun Semantics
+
+### Autorun Flag
 
 ```skript
 event-test is autorun
 event-test is not autorun
 ```
 
-**Type:** Boolean condition
+* `true` during load-time execution
+* `false` during manual execution
 
-**Meaning:**
-
-* Evaluates to `true` when the current test is executing as part of automatic test execution
-* Evaluates to `false` when the test is executed manually via `run test(s)`
-
-**Scope:**
-
-* Valid only inside a `test` block
-* Bound to the `skriptTest` event context
-
-**Notes:**
-
-* This flag is set by the framework before test execution begins
-* It remains constant for the duration of the test
-* It is commonly used to guard unsafe, destructive, or environment-dependent logic
+The flag is immutable and scoped to the test event.
 
 ---
 
-### Autorun Control Effect
-
-**Syntax:**
+### Stopping Autorun Execution
 
 ```skript
 stop auto test execution here
 ```
 
-**Behavior:**
+* Halts the current test **only if** autorun is active
+* No effect during manual execution
 
-* If `event-test is autorun`:
-
-  * Immediately halts execution of the current test
-    
-* If `event-test is not autorun`:
-
-  * Has no effect
-
-**Use Case:**
-Allows tests to opt out of autorun safely while still being available for manual execution.
-
----
-
-### Typical Usage Pattern
+Typical usage:
 
 ```skript
-test "destructive test":
-    if event-test is autorun:
-        stop auto test execution here
-    # manual-only logic below
+if event-test is autorun:
+    stop auto test execution here
 ```
 
 ---
 
-### Guarantees
+## Test Lifecycle Hooks
 
-* Autorun mode is always enabled during load-time execution
-* Manual execution always runs with autorun disabled
-* The autorun flag is not mutable by user code
-* Autorun state never leaks between tests
+The framework provides structured lifecycle hooks that integrate with both framework and native execution.
 
-## Experimental: Parsing & Log Inspection
-
-The framework supports testing Skript syntax itself.
-
-### Parse Section
-
-```skript
-parse:
-    <skript code>
-```
-
-* Attempts to parse the nested code using `ParserInstance`
-* Does not execute the code
-
-### Log Inspection
-
-```skript
-last parse logs
-```
-
-* Returns all `SkriptLogger` messages captured during the most recent parse
-* Enables validation of expected parser errors
-
----
-
-## Test Lifecycle Hooks (Before / After)
-
-The framework provides **test lifecycle hooks** that allow controlled setup and teardown logic.
-
-### Available Hooks
+### Hooks
 
 ```skript
 before each test
@@ -352,186 +370,177 @@ before all tests
 after all tests
 ```
 
-### Semantics
+### `event-script` Usage
 
-* **`before each test`**
-  Runs immediately before every individual test execution.
+Inside **all** lifecycle hooks, `event-script` refers to:
 
-* **`after each test`**
-  Runs immediately after every individual test execution, regardless of outcome.
+> **The script whose tests are currently executing**
 
-* **`before all tests`**
-  Runs once before any test is executed.
+Examples:
 
-* **`after all tests`**
-  Runs once after all test execution completes.
+```skript
+before all tests:
+    broadcast "Running tests for %event-script%"
 
-### Event Context
+after each test:
+    delete {-tmp::%event-script%::*}
+```
 
-Hooks execute with the same event values as a normal test:
+This allows:
 
-* `event-string` – current test identifier (for per-test hooks)
-* `event-boolean` – autorun flag
+* Per-script setup and teardown
+* Shared resources scoped to a script
+* Accurate cleanup even when multiple scripts define tests
 
-### Intended Usage
+### Execution Semantics
 
-Hooks are designed for:
+* `before all tests` / `after all tests` run **once per script**
+* `before each test` / `after each test` run **per test**, with `event-string` set
 
-* Environment setup / teardown
-* Temporary state mutation
-* Resource allocation and cleanup
-* Optional world isolation (see below)
+---
 
-Hooks **must not** be used to implement assertions directly.
+## Parser & Syntax Testing (Reflection)
+
+The framework supports **parser-level testing** using reflection.
+
+### Parse Section
+
+```skript
+parse:
+    <skript code>
+```
+
+* Uses `ParserInstance` to parse nodes
+* Does not execute code
+* Fully restores parser state afterward
+
+### Log Capture
+
+```skript
+last parse logs
+```
+
+* Captures `SkriptLogger` output
+* Enables assertions against expected parser errors
+
+---
+
+## Native TestTracker Integration (Experimental)
+
+Failures are forwarded to Skript’s internal `TestTracker`.
+
+### Implications
+
+* Native reporting tools can observe results
+* CI-style environments can consume output
+
+### Limitations
+
+* Experimental and version-dependent
+* No compatibility guarantees
+
+You **must** use:
+
+```skript
+devdinc test "<name>"
+```
+
+Native `test` syntax is not supported.
 
 ---
 
 ## Test Environment Utilities
 
-To ensure isolation and repeatability, the framework provides controlled test fixtures:
+The framework provides controlled fixtures:
 
-**`test-world`** – the `"skripttest"` world if present, otherwise the first loaded world
-* **`test-location`** – fixed location (`spawn + 10, 1, 0`) in test-world
-* **`test-block`** – self-resetting block restored after tests located at test-location
-* **`test-offline-player`** – generated offline player instance
-  
----
+* `test-world` – `skripttest` or fallback world
+* `test-location` – fixed offset location
+* `test-block` – temporary block (auto-restored)
+* `test-offline-player` – generated offline player
 
-## World Isolation & Persistence Guarantees
-
-### Default Behavior
-
-By default, **tests share the same world state**.
-
-This is intentional.
-
-Automatic per-test world isolation is **not enabled** because:
-
-* Full world backup/restore is **disk-intensive**
-* Synchronous world copying is **slow**
-* Asynchronous restore is **unsafe**
-* Large worlds make isolation prohibitively expensive
-
-The framework therefore prioritizes **predictable runtime safety** over implicit isolation.
+These utilities guarantee cleanup after each test.
 
 ---
 
-### Opt-In World Isolation Using Hooks
+## World Isolation Policy
 
-Full isolation **can** be achieved manually using lifecycle hooks:
+### Default
+
+* World state is **shared** across tests
+* This is intentional for performance and safety
+
+### Opt-In Isolation
+
+Users may implement isolation manually via hooks:
 
 ```skript
 before each test:
-    # backup world state
+    # snapshot world
 
 after each test:
-    # restore world state
+    # restore world
 ```
 
-This allows users to:
-
-* Snapshot world folders
-* Restore region files
-* Roll back test-specific mutations
-
-⚠ **Important:**
-This approach is **explicitly opt-in** and entirely user-controlled.
-
-The framework does **not** provide built-in world snapshotting utilities and makes no assumptions about storage strategy, synchronization model, or performance tradeoffs.
-
+No built-in snapshotting is provided.
 
 ---
 
-## Failure Reporting
+## Console Output
 
-Each test maintains its own failure count:
-
-```
--test.sk::errors::<test id>
-```
-
-After execution completes:
-
-* A summary line is printed:
-
-```
-<X>/<Y> tests passed
-```
-
-Where:
-
-* `Y` = executed tests
-* `X` = tests without recorded failures
-
----
-
-## Console Output Format
-
-When enabled, failures are printed as:
+Failures are printed as:
 
 ```
 [Skript] [TEST FAILURE] <test name> <optional message>
 ```
 
-Output is suppressed entirely when `with no error message` is specified.
+Output is suppressed when `with no error message` is used.
 
 ---
 
-## Internal Guarantees
+## Guarantees
 
-The framework guarantees that:
+The framework guarantees:
 
-* Test execution state is isolated per test
-* Registration is implicit and deterministic
-* Autorun and manual execution are distinguishable
-* Failures are recorded even in non-halting mode
-* State never leaks between tests
+* Deterministic registration and execution
+* Script-scoped test isolation
+* No state leakage between tests
+* Reliable autorun vs manual distinction
+* Parser state is always restored
 
 ---
 
-## Internal & Non-Public Details
+## Non-Public Implementation Details
 
-The following are implementation details and must not be relied upon:
+The following must not be relied upon:
 
-* Sentinel test usage
+* Sentinel test mechanics
 * Internal variable layout
-* Reflection-based hooks
+* Scheduler timing assumptions
+* Reflection internals
 
 These may change without notice.
 
 ---
 
-## Intended Use Cases
+## Reflection Disclaimer
 
-* Regression testing for Skript libraries
-* Validation of complex event-driven logic
-* Syntax and parser validation
-* Automated sanity checks on server startup
-* Lightweight CI-style verification
+Reflection is used for:
 
-This framework is deliberately constrained to ensure reliability and transparency.
-
----
-
-## Reflection Usage Disclaimer
-
-Several advanced features rely on **reflection**:
-
-* Parser inspection (`ParserInstance`)
+* `ParserInstance` manipulation
 * Condition parsing
-* Native test tracker forwarding
-* Log capture via `SkriptLogger`
+* Log capture
+* Native `TestTracker` forwarding
 
 ### Guarantees
 
-* Reflection usage is **read-only or carefully scoped**
-* No permanent internal state is mutated
-* All parser state is backed up and restored
+* All reflected state is backed up and restored
+* No permanent mutation of Skript internals
 
 ### Non-Guarantees
 
-* Binary compatibility across Skript versions
+* Binary compatibility across versions
 * Stability under obfuscation
-* Availability on forks with modified internals
+* Support on modified Skript forks
 
-Reflection-backed features are considered **best-effort** and may degrade gracefully.
+Reflection-backed features are **best-effort** and may degrade gracefully.
+
