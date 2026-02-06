@@ -1,0 +1,100 @@
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
+    assert true: {_none} is not set
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert false passes":
+    assert false: {_none} is set
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 framework internal consistency":
+    without halting assert true: size of all tests > 0
+    without halting assert true: "%current script%" is set
+    assert true: size of test errors is 0
+
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true failure is recorded":
+    without halting assert true with no error message: {_none} is set
+    assert true: size of test errors is 1
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert error message is stored":
+    without halting assert true with no error message "msg1": {_none} is set
+    assert true with message "check failed": test errors contains "msg1"
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 no error message produces empty suffix":
+    without halting assert true with no error message: {_none} is set
+    assert true: size of test errors is 1
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 halting assert stops execution":
+    assert true with no error message: {_none} is set
+    broadcast "<red>ERROR: this should never execute"
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 without halting continues execution":
+    without halting assert true with no error message: {_none} is set
+    assert true: {_none} is not set
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test records error":
+    without halting fail test with no error message
+    assert true: size of test errors is 1
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 fail test halts by default":
+    fail test with no error message
+    broadcast "<red>ERROR: fail test did not halt"
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 autorun flag is true":
+    if event-test is not autorun:
+        stop
+    assert true: event-test is autorun
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag is false" when {_none} is set:
+    fail test
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 manual run flag" when event-test is not autorun:
+    fail test if event-test is autorun
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 stop auto execution works":
+    if event-test is not autorun:
+        stop
+    stop auto test execution here
+    broadcast "<red>ERROR: auto execution not stopped"
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test":
+    set {_all::*} to all tests with test name "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests returns this test"
+    assert true: size of {_all::*} > 0
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 all tests":
+    set {_all::*} to all tests
+    assert true: size of {_all::*} > 0
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests A":
+    without halting assert true with no message: {_none} is set
+    assert true: size of test errors is 1
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between tests B":
+    assert true: size of test errors is 0
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
+    assert true: event-test[0] is event-string
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary A":
+    set {-test.sk::temptestblocka} to test-block's type
+    test block is chest:
+        set test-block to trapped chest
+    else if test block is trapped chest:
+        set test-block to chest
+    else:
+        set test-block to ender chest
+    set {-test.sk::temptestblockb} to test-block's type
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary B":
+    assert true: {-test.sk::temptestblocka} is test-block's type
+    assert true: {-test.sk::temptestblocka} is not {-test.sk::temptestblockb}
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
+    parse:
+        no errors: abc # just an internal stuff to make sure test.sk loads without errors
+    assert last parse logs contains "Can't understand this condition/effect: no errors: abc"
+
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A":
+    fail test with no error message
+    
+devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result B":
+    set {_test::*} to all tests with test name "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A"
+    assert true: last test result of {_test::1} is a fail
