@@ -276,10 +276,6 @@ condition parse:
         set {-test.sk::latestLogs::*} to {_logs::*}
         {_logger}.close()
         {_parser}.reset()
-        
-local effect no errors\: <.+>:
-    trigger:
-        stop
 
 plural expression last parse logs:
     usable in:

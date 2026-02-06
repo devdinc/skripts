@@ -1,3 +1,7 @@
+local effect no errors\: <.+>:
+    trigger:
+        stop
+
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
     assert true: {_none} is not set
 
