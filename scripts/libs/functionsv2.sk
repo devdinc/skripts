@@ -150,7 +150,8 @@ condition set %object% to [new] lambda[ %-objects%](1:|2:-|3:+):
         loop {_functionsv2.sk::ctx::nodes::*}:
             set {_functionsv2.sk::ctx::indent} to loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 4) if {_functionsv2.sk::ctx::originindent} starts with " " else loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 1) 
             set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::indent}%%loop-value.getKey()%"
-            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:" if loop-value is instance of SectionNode
+            if loop-value is instance of SectionNode:
+                set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:"
             add {_functionsv2.sk::ctx::key} to {_functionsv2.sk::ctx::expr::*} 
             {_functionsv2.sk::ctx::key}.trim() starts with "return"
             set {_functionsv2.sk::ctx::noreturn} to false if parse mark is 1
@@ -176,7 +177,8 @@ condition set %object% to [new] (1:supplier|1:getter|2:runnable|2:runner|3:consu
         loop {_functionsv2.sk::ctx::nodes::*}:
             set {_functionsv2.sk::ctx::indent} to loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 4) if {_functionsv2.sk::ctx::originindent} starts with " " else loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 1) 
             set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::indent}%%loop-value.getKey()%"
-            set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:" if loop-value is instance of SectionNode
+            if loop-value is instance of SectionNode:
+                set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::key}%:" 
             add {_functionsv2.sk::ctx::key} to {_functionsv2.sk::ctx::expr::*} 
 
         set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
