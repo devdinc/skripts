@@ -210,7 +210,7 @@ effect:
         then:
             if parse tags does not contain "5":
                 sendTestFailMessage "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
-            TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%", current script)
+                TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%", {_script})
             add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
             if parse tags contains "3":
                 delay effect
@@ -223,7 +223,7 @@ effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail te
         set {_script} to event.getEventValue("script")
         if parse tags does not contain "5":
             sendTestFailMessage "Test ""%{_test}%"" failed", expr-1
-        TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%", current script)
+            TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", {_script})
         add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
         if parse tags contains "3":
             delay effect
@@ -277,7 +277,7 @@ condition parse:
         {_logger}.close()
         {_parser}.reset()
 
-plural expression last parse logs:
+plural expression (last|latest) parse logs:
     usable in:
         custom event "skriptTest"
     get:
