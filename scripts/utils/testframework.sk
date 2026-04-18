@@ -211,7 +211,7 @@ effect:
             if parse tags does not contain "5":
                 sendTestFailMessage "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
             TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%", current script)
-            add "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
+            add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
             if parse tags contains "3":
                 delay effect
 
@@ -224,7 +224,7 @@ effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail te
         if parse tags does not contain "5":
             sendTestFailMessage "Test ""%{_test}%"" failed", expr-1
         TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%", current script)
-        add "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
+        add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
         if parse tags contains "3":
             delay effect
         
