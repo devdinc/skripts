@@ -138,15 +138,17 @@ local function walk(n: object, list: object) :: objects:
             walk(loop-value, {_list})
     return ...{_list}
 
-condition set %object% to [new] lambda[ %-objects%](1:|2:-|3:+):
+condition (create|define) [a] [new] (1:|2:non-returning|3:returning) lambda [with] [%-objects%] ((and store it|stored) in|as) %object%:
     parse:
         set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
         set {_functionsv2.sk::ctx::script} to script ({_functionsv2.sk::ctx::origin}.getConfig().getFileName())
         if {_functionsv2.sk::ctx::script} is not set: # likely inner lambda
             set {_functionsv2.sk::ctx::script} to current script
-        set {_functionsv2.sk::ctx::vars} to expr-2
+
+        set {_functionsv2.sk::ctx::vars} to expr-1
         set {_functionsv2.sk::ctx::originindent} to {_functionsv2.sk::ctx::origin}.[Node]getIndentation()
         set {_functionsv2.sk::ctx::nodes::*} to walk({_functionsv2.sk::ctx::origin}, {_none})
+
         loop {_functionsv2.sk::ctx::nodes::*}:
             set {_functionsv2.sk::ctx::indent} to loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 4) if {_functionsv2.sk::ctx::originindent} starts with " " else loop-value.[Node]getIndentation().substring(length of {_functionsv2.sk::ctx::originindent} + 1) 
             set {_functionsv2.sk::ctx::key} to "%{_functionsv2.sk::ctx::indent}%%loop-value.getKey()%"
@@ -159,17 +161,18 @@ condition set %object% to [new] lambda[ %-objects%](1:|2:-|3:+):
         set {_functionsv2.sk::ctx::noreturn} to false if parse mark is 3
         set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
         continue
-    check:
-        set raw expression of expr-1 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
 
-condition set %object% to [new] (1:supplier|1:getter|2:runnable|2:runner|3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier)[ %-objects%]:
+    check:
+        set raw expression of expr-2 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
+
+condition (create|define) [a] [new] (1:supplier|1:getter|2:runnable|2:runner|3:consumer|3:accepter|4:function|4:applier|5:biconsumer|5:biaccepter|6:bifunction|6:biapplier) [with] [%-objects%] ((and store it|stored) in|as) %object%:
     parse:
         set {_functionsv2.sk::ctx::origin} to SkriptLogger.getNode()
         set {_functionsv2.sk::ctx::script} to script ({_functionsv2.sk::ctx::origin}.getConfig().getFileName())
         if {_functionsv2.sk::ctx::script} is not set:
             set {_functionsv2.sk::ctx::script} to current script
 
-        set {_functionsv2.sk::ctx::vars} to expr-2
+        set {_functionsv2.sk::ctx::vars} to expr-1
         set {_functionsv2.sk::ctx::originindent} to {_functionsv2.sk::ctx::origin}.[Node]getIndentation()
         set {_functionsv2.sk::ctx::nodes::*} to walk({_functionsv2.sk::ctx::origin}, {_none})
 
@@ -188,19 +191,23 @@ condition set %object% to [new] (1:supplier|1:getter|2:runnable|2:runner|3:consu
             parse mark is 6
         then:
             set {_functionsv2.sk::ctx::noreturn} to false
+
         set {_functionsv2.sk::ctx::args::*} to FextractArgs({_functionsv2.sk::ctx::vars})
+
         if any:
             parse mark is 1
             parse mark is 2
         then:
             if size of {_functionsv2.sk::ctx::args::*} > 0:
                 stop
+
         if any:
             parse mark is 3
             parse mark is 4
         then:
             if size of {_functionsv2.sk::ctx::args::*} is 0:
                 stop
+
         if any:
             parse mark is 5
             parse mark is 6
@@ -211,7 +218,7 @@ condition set %object% to [new] (1:supplier|1:getter|2:runnable|2:runner|3:consu
         continue
 
     check:
-        set raw expression of expr-1 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
+        set raw expression of expr-2 to build lambda args {_functionsv2.sk::ctx::args::*} body {_functionsv2.sk::ctx::expr::*} noreturn {_functionsv2.sk::ctx::noreturn} script {_functionsv2.sk::ctx::script}
 
 expression run[ lambda] %object%[ with %-objects%]:
     get:
