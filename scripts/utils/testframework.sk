@@ -210,7 +210,7 @@ effect:
         then:
             if parse tags does not contain "5":
                 sendTestFailMessage "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
-                TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed%", {_script})
+                TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", {_script})
             add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
             if parse tags contains "3":
                 delay effect
