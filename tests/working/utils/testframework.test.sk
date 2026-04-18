@@ -93,6 +93,7 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary B":
     
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
     parse:
+        abc
         no errors: abc # just an internal stuff to make sure test.sk loads without errors
     broadcast "abcde: %last parse logs%"
     assert last parse logs contains "Can't understand this condition/effect: no errors: abc"
