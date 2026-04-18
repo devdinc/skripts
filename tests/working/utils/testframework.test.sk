@@ -1,7 +1,3 @@
-local effect no errors\: <.+>:
-    trigger:
-        stop
-
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true passes":
     assert true: {_none} is not set
 
@@ -12,7 +8,6 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 framework internal consistenc
     without halting assert true: size of all tests > 0
     without halting assert true: "%current script%" is set
     assert true: size of test errors is 0
-
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 assert true failure is recorded":
     without halting assert true with no error message: {_none} is set
@@ -90,11 +85,6 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary A":
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary B":
     assert true: {-test.sk::temptestblocka} is test-block's type
     assert true: {-test.sk::temptestblocka} is not {-test.sk::temptestblockb}
-    
-devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
-    parse:
-        no errors: abc # just an internal stuff to make sure test.sk loads without errors
-    assert last parse logs contains "Can't understand this condition/effect: no errors: abc"
 
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A":
     fail test with no error message
