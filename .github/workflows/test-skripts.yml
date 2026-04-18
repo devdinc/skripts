@@ -78,6 +78,11 @@ jobs:
 
               set {_tests::*} to all tests
               autorun {_tests::*}
+
+          devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 parse section":
+              parse:
+                  abc
+              assert last parse logs contains "Can't understand this condition/effect: abc"
           EOF
 
       - name: Run tests
