@@ -1,0 +1,4 @@
+name: runtime-test-framework
+version: 1.0.0
+description: Skript package for runtime-test-framework
+requires: skript >= 2.15, skript-reflect >= 2.6

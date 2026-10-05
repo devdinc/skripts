@@ -45,16 +45,6 @@ jobs:
           curl -L -o build/libs/skript-reflect.jar \
             https://github.com/SkriptLang/skript-reflect/releases/download/v2.6.3/skript-reflect-2.6.3.jar
             
-      - name: Download Routines from JitPack
-        run: |
-          mkdir -p build/libs
-      
-          curl -L --fail -o build/libs/skript-reflect/routines-core.jar \
-            https://jitpack.io/com/github/devdinc/routines/routines-core/v2.2.1/routines-core-v2.2.1.jar
-      
-          curl -L --fail -o build/libs/skript-reflect/routines-paper.jar \
-            https://jitpack.io/com/github/devdinc/routines/routines-paper/v2.2.1/routines-paper-v2.2.1.jar
-            
       - name: Prepare scripts
         run: |
           mkdir -p tests/scripts
@@ -94,6 +84,18 @@ jobs:
 
           # Skript version or ref (tag, branch, or commit)
           skript_repo_ref: 2.15.0
+
+          # directory containing addon/plugin jars (relative to repo root)
+          extra_plugins_directory: build/libs
+
+          run_vanilla_tests: false
+
+      - name: Run tests latest
+        uses: SkriptLang/skript-test-action@v1.3
+        with:
+          skript_repo_url: https://github.com/SkriptLang/Skript.git
+          # directory where your test scripts are located (relative to repo root)
+          test_script_directory: tests
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs

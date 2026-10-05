@@ -1,0 +1,4 @@
+name: single-line-section
+version: 1.0.0
+description: Skript package for single-line-section
+requires: skript >= 2.15, skript-reflect >= 2.6

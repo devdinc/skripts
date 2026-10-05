@@ -1,0 +1,4 @@
+name: world-properties
+version: 1.0.0
+description: Skript package for world-properties
+requires: skript >= 2.15, skript-reflect >= 2.6

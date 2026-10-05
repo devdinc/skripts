@@ -1,0 +1,4 @@
+name: repeat-effect
+version: 1.0.0
+description: Skript package for repeat-effect
+requires: skript >= 2.15, skript-reflect >= 2.6

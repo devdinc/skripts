@@ -1,0 +1,4 @@
+name: event-specified-variables
+version: 1.0.0
+description: Skript package for event-specified-variables
+requires: skript >= 2.15, skript-reflect >= 2.6

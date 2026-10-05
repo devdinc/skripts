@@ -1,0 +1,5 @@
+name: scoped-variables
+version: 1.0.0
+description: Skript package for scoped-variables
+requires: skript >= 2.15, skript-reflect >= 2.6
+packages: https://github.com/devdinc/skripts#scripts/lang/event-specified-variables
