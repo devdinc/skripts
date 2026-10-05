@@ -1,4 +1,0 @@
-name: config-reloadv2
-version: 1.0.0
-description: Skript package for config-reloadv2
-requires: skript >= 2.15, skript-reflect >= 2.6
