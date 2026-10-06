@@ -1,5 +1,11 @@
 # Skript Runtime Testing Framework
 
+## Install
+With [pacskage](https://github.com/miberss/pacskage):
+```
+/package install https://github.com/devdinc/skripts/#scripts/utils/runtime-test-framework
+```
+
 ## Overview
 
 ## Compatibility with Skript Native Tests
