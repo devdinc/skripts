@@ -109,7 +109,7 @@ effect (1:|2:auto)run %objects%:
             call custom event "afterSkriptTest" with {_list::*}
             if any:
                 {_list::string} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-                size of ({_alltests::*} where ["%input%" is "%loop-value%"]) is 0
+                size of ({_alltests::*} where ["%input%" is "%loop-value% "]) is 0
             then:
                 add 1 to {_forgottenTestResults}
                 continue loop
@@ -133,7 +133,7 @@ condition last test result [of %-object%] is a (1:pass|2:fail):
         else:
             set {_test} to expr-1[0]
             set {_script} to expr-1[1]
-            stop if size of (all tests where ["%input%" is "%expr-1%"]) is 0
+            stop if size of (all tests where ["%input%" is "%expr-1% "]) is 0
         if all:
             parse mark is 1
             size of {-test.sk::errors::%{_script}%.%{_test}%::*} <= 0
@@ -325,5 +325,5 @@ expression [the] test(-| )offline[-| ]player:
     return type: offlineplayer
     get:
         set {_instance} to new TestOfflinePlayer()
-        # TestOfflinePlayer.[TestOfflinePlayer]PLAYER_PROFILE.setProperty(new ProfileProperty("textures", "ewogICJ0aW1lc3RhbXAiIDogMTc0NzQyOTg2MTQwOCwKICAicHJvZmlsZUlkIiA6ICI2OWUzNzAyNjJjN2Q0MjU1YWM3NjliMTNhNWZlOGY3NCIsCiAgInByb2ZpbGVOYW1lIiA6ICJTYWh2ZGUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTE2MGFiZWVhNDI1YzZmODMyYjc0NmE0NTQ0YzVmYjlhOTgxYjAyZTFiZDg1ZmVhNWM3ZWY4MzFiZGM4NzRmMyIKICAgIH0KICB9Cn0="));
+        # TestOfflinePlayer.[TestOfflinePlayer]PLAYER_PROFILE.setProperty(new ProfileProperty("textures", "ewogICJ0aW1lc3RhbXAiIDogMTc0NzQyOTg2MTQwOCwKICAicHJvZmlsZUlkIiA6ICI2OWUzNzAyNjJjN2Q0MjU1[...]
         return {_instance}
