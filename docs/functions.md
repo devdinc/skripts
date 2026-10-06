@@ -3,6 +3,12 @@
 This module introduces lightweight, Java-compatible lambda expressions for **Skript**, backed by real Java functional interfaces.
 Lambdas are compiled into proxy instances and can be passed directly into Java APIs, streams, or stored for deferred execution.
 
+## Install
+With [pacskage](https://github.com/miberss/pacskage):
+```
+/package install https://github.com/devdinc/skripts/#scripts/libs/functionsv2
+```
+
 ---
 
 ## Requirements
