@@ -12,6 +12,12 @@ It provides:
 
 All scoping is implemented by rewriting variable names internally.
 
+## Install
+With [pacskage](https://github.com/miberss/pacskage):
+```
+/package install https://github.com/devdinc/skripts/#scripts/lang/scoped-variables
+```
+
 ---
 
 ## Concepts
