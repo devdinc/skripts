@@ -2,6 +2,11 @@
 
 Personal Skript files created for various purposes.
 
+You can use [pacskages](https://github.com/miberrs/pacskage) to install them.
+e.g: 
+
+`package install https://github.com/devdinc/skripts/#scripts/libs/functionsv2`
+
 ## Documentation
 
 All documentation, setup instructions, and usage examples are maintained in the project [wiki](https://github.com/devdinc/skripts/wiki).
