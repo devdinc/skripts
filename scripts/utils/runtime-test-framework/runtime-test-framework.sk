@@ -2,7 +2,6 @@ using reflection
 
 import:
     ch.njol.skript.lang.parser.ParserInstance
-    org.bukkit.Bukkit
     ch.njol.skript.test.utils.TestOfflinePlayer
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
@@ -20,15 +19,6 @@ event "skriptTest":
     parse:
         set {_origin} to SkriptLogger.getNode()
         set {_realscript} to script ({_origin}.getConfig().getFileName())
-        # we don't have access to event-string or expr-1, so we can't do it in parse time.
-        # one thing we can do is cause a call to event to register tho.
-        set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-        set {_list::boolean} to false
-        create section with {_proxy} stored in {_functions::run}:
-            wait 2 ticks
-            call custom event "skriptTest" with {_list::*}
-        set {_proxy} to new proxy instance of Runnable using {_functions::*}
-        Bukkit.getGlobalRegionScheduler().execute(instance of plugin "Skript", {_proxy})
         continue
     check:
         set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
@@ -300,12 +290,12 @@ plural expression test errors[ for %-objects%]:
 expression [the] test(-| )world:
     return type: world
     get:
-        set {_world} to Bukkit.getWorld("skripttest")
+        set {_world} to world "skripttest"
         if any:
             {_world} is not set
             {_world} is null
         then:
-            return Bukkit.getWorlds().get(0)
+            return first element of all worlds
         else:
             return {_world}
 
