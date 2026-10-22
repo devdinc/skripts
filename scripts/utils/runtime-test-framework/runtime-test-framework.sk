@@ -7,6 +7,8 @@ import:
     ch.njol.skript.test.runner.TestTracker
     ch.njol.skript.log.SkriptLogger
     ch.njol.skript.ScriptLoader
+    java.lang.Runnable
+    org.bukkit.Bukkit
 
 options:
     hidden: f39f0f4a-31ee-4b71-87e9-38ddba3a2313 # id of the hidden bootstrap test
@@ -33,6 +35,16 @@ event "skriptTest":
     parse:
         set {_origin} to SkriptLogger.getNode()
         set {_realscript} to script ({_origin}.getConfig().getFileName())
+
+        # we don't have access to event-string or expr-1, so we can't run it in parse time.
+        # one thing we can do is cause a call to event to register tho.
+        set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+        set {_list::boolean} to false
+        create section with {_proxy} stored in {_functions::run}:
+            wait 2 ticks
+            call custom event "skriptTest" with {_list::*}
+        set {_proxy} to new proxy instance of Runnable using {_functions::*}
+        Bukkit.getGlobalRegionScheduler().execute(instance of plugin "Skript", {_proxy})
         continue
     check:
         set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
