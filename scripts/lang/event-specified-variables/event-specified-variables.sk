@@ -1,202 +1,124 @@
 import:
     java.util.Map
     ch.njol.skript.variables.Variables
-    ch.njol.skript.lang.Variable
     ch.njol.skript.lang.VariableString
-    ch.njol.skript.Skript
-    org.bukkit.event.Event
     ch.njol.skript.util.StringMode
+
+# resolves the variable once: returns [1] resolved name, [2] is local, [3] is list, [4] event to use
+# mark 1 = `variable "<name>"`, mark 2 = a real variable expression (hoisted from parse as `var`)
+local function evKey(mark: number, str: string, var: object, event: object, custom: object) :: objects:
+    if {_mark} is 2:
+        set {_vs} to {_var}.getName()
+        set {_local} to {_var}.isLocal()
+        set {_list} to {_var}.isList()
+    else:
+        set {_n} to {_str}
+        set {_local} to false
+        if {_n} starts with "_":
+            set {_local} to true
+            set {_n} to {_n}.substring(1)
+        set {_vs} to VariableString.newInstance({_n}, StringMode.VARIABLE_NAME)
+        set {_list} to false
+        if {_str} ends with "::*":
+            set {_list} to true
+    set {_ev} to {_event}
+    if {_custom} is set:
+        set {_ev} to {_custom}
+    set {_ret::1} to {_vs}.toUnformattedString({_ev})
+    set {_ret::2} to {_local}
+    set {_ret::3} to {_list}
+    set {_ret::4} to {_ev}
+    return {_ret::*}
+
+local function evGet(mark: number, str: string, var: object, event: object, custom: object) :: objects:
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    set {_value} to Variables.getVariable({_k::1}, {_k::4}, {_k::2})
+    if {_value} is instance of Map:
+        loop ...{_value}.entrySet():
+            set {_entry} to loop-value
+            set {_out::%{_entry}.getKey()%} to {_entry}.getValue()
+        return {_out::*}
+    return {_value}
+
+local function evSet(mark: number, str: string, var: object, event: object, custom: object, values: objects):
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    set {_name} to {_k::1}
+    if any:
+        {_k::3} is true
+        {_name} ends with "::*" # inner resolution, not how skript behaves but I want it this way
+    then:
+        set {_base} to {_name}.substring(0, {_name}.length() - 3)
+        Variables.setVariable("%{_base}%::*", null, {_k::4}, {_k::2})
+        set {_i} to 1
+        loop {_values::*}:
+            Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_k::4}, {_k::2})
+            add 1 to {_i}
+    else:
+        Variables.setVariable({_name}, {_values::1}, {_k::4}, {_k::2})
+
+local function evAdd(mark: number, str: string, var: object, event: object, custom: object, values: objects):
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    set {_name} to {_k::1}
+    set {_value} to Variables.getVariable({_name}, {_k::4}, {_k::2})
+    if {_value} is instance of Map:
+        set {_base} to {_name}.substring(0, {_name}.length() - 3)
+        set {_i} to {_value}.size() + 1
+        loop {_values::*}:
+            Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_k::4}, {_k::2})
+            add 1 to {_i}
+    else if {_value} is not set:
+        Variables.setVariable({_name}, {_values::1}, {_k::4}, {_k::2})
+    else:
+        Variables.setVariable({_name}, {_value} + {_values::1}, {_k::4}, {_k::2})
+
+# list: removes only the FIRST entry matching any of the values (kept from the original); scalar: subtracts
+local function evRemove(mark: number, str: string, var: object, event: object, custom: object, values: objects):
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    set {_name} to {_k::1}
+    set {_value} to Variables.getVariable({_name}, {_k::4}, {_k::2})
+    if {_value} is instance of Map:
+        set {_base} to {_name}.substring(0, {_name}.length() - 3)
+        set {_done} to false
+        loop ...{_value}.entrySet():
+            set {_entry} to loop-value
+            if {_done} is false:
+                if {_values::*} contains {_entry}.getValue():
+                    Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_k::4}, {_k::2})
+                    set {_done} to true
+    else:
+        Variables.setVariable({_name}, {_value} - {_values::1}, {_k::4}, {_k::2})
+
+local function evRemoveAll(mark: number, str: string, var: object, event: object, custom: object, values: objects):
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    set {_name} to {_k::1}
+    set {_value} to Variables.getVariable({_name}, {_k::4}, {_k::2})
+    if {_value} is instance of Map:
+        set {_base} to {_name}.substring(0, {_name}.length() - 3)
+        loop ...{_value}.entrySet():
+            set {_entry} to loop-value
+            if {_values::*} contains {_entry}.getValue():
+                Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_k::4}, {_k::2})
+
+local function evDelete(mark: number, str: string, var: object, event: object, custom: object):
+    set {_k::*} to evKey({_mark}, {_str}, {_var}, {_event}, {_custom})
+    Variables.setVariable({_k::1}, null, {_k::4}, {_k::2})
 
 expression (1:variable %-string%|2:%$-objects%) with custom-event [%-object%]:
     parse:
-        #if expr-2 is not an instance of Variable:
-        #    Skript.error("Expression 1 must be a variable")
-        #    stop
-
-        #if expr-3 is set:
-        #    expr-3 is not an instance of Event
-        #    Skript.error("Expression 2 must be an event")
-        #    stop
-            
-        # change values does not exist here and we cant specify "set scope"
-        #if size of change values is greater than 1:
-        #    {_isList} is false
-        #    Skript.error("You can't set a single variable to multiple values")
-        #    stop
+        if parse mark is 2:
+            set {_evv::var} to expr-2
         continue
-
-    set:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-            
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        
-        if any:
-            {_isList} is true
-            {_name} ends with "::*" # inner resolution, not how skript behaves but I want it this way
-        then:
-            set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            Variables.setVariable("%{_base}%::*", null, {_event}, {_isLocal})
-            set {_i} to 1
-            loop change values:
-                Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_event}, {_isLocal})
-                add 1 to {_i}
-            stop
-
-        Variables.setVariable({_name}, change value, {_event}, {_isLocal})
-
     get:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
-
-        if {_value} is instance of Map:
-            set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            loop ...{_value}.entrySet():
-                set {_entry} to loop-value
-                set {_list::%{_entry}.getKey()%} to {_entry}.getValue()
-            return {_list::*}
-
-        # scalar fallback
-        return {_value}
-
+        return evGet(parse mark, expr-1, {_evv::var}, event, expr-3)
+    set:
+        evSet(parse mark, expr-1, {_evv::var}, event, expr-3, change values)
     add:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
-
-        if {_value} is instance of Map:
-            set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            set {_i} to {_value}.size() + 1
-            loop change values:
-                Variables.setVariable("%{_base}%::%{_i}%", loop-value, {_event}, {_isLocal})
-                add 1 to {_i}
-            stop
-
-        # scalar add
-        if {_value} is not set:
-            Variables.setVariable({_name}, change value, {_event}, {_isLocal})
-        else:
-            Variables.setVariable({_name}, {_value} + change value, {_event}, {_isLocal})
-            
+        evAdd(parse mark, expr-1, {_evv::var}, event, expr-3, change values)
     remove:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
-
-        if {_value} is instance of Map:
-            set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            loop ...{_value}.entrySet():
-                set {_entry} to loop-value
-                if change values contains {_entry}.getValue():
-                    Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_event}, {_isLocal})
-                    stop
-            stop
-
-        # scalar remove = subtract
-        Variables.setVariable({_name}, {_value} - change value, {_event}, {_isLocal})
-
+        evRemove(parse mark, expr-1, {_evv::var}, event, expr-3, change values)
     remove all:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        set {_value} to Variables.getVariable({_name}, {_event}, {_isLocal})
-
-        if {_value} is instance of Map:
-            set {_base} to {_name}.substring(0, {_name}.length() - 3)
-            loop ...{_value}.entrySet():
-                set {_entry} to loop-value
-                if change values contains {_entry}.getValue():
-                    Variables.setVariable("%{_base}%::%{_entry}.getKey()%", null, {_event}, {_isLocal})
-            stop
-
+        evRemoveAll(parse mark, expr-1, {_evv::var}, event, expr-3, change values)
     delete:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        Variables.setVariable({_name}, null, {_event}, {_isLocal})
-
+        evDelete(parse mark, expr-1, {_evv::var}, event, expr-3)
     reset:
-        if parse mark is 2:
-            set {_var} to (raw expression of expr-2).getName()
-            set {_isLocal} to (raw expression of expr-2).isLocal()
-            set {_isList} to (raw expression of expr-2).isList()
-        else:
-            set {_isLocal} to true if expr-1 starts with "_" else false
-            set {_name} to expr-1
-            if {_isLocal} is true:
-                set {_name} to {_name}.substring(1) # substring to remove "_"
-            set {_var} to VariableString.newInstance({_name}, StringMode.VARIABLE_NAME)
-            set {_isList} to true if expr-1 ends with "::*" else false
-    
-        set {_event} to event if expr-3 is not set else expr-3
-        set {_name} to {_var}.toUnformattedString({_event})
-        Variables.setVariable({_name}, null, {_event}, {_isLocal})
+        evDelete(parse mark, expr-1, {_evv::var}, event, expr-3)
