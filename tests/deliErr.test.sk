@@ -1,2 +1,2 @@
-test "delibarate error":
+devdinc test "delibarate error":
     assert {_none} is 5 with "intended error"
