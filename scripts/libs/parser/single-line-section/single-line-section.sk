@@ -59,8 +59,10 @@ local function compileLine(code: string, event: object, script: script) :: objec
 expression [new] [single] line section %strings%[ with [arg[ument]s [variables]] %-objects%][ in %-script%]:
     return type: section
     parse:
+        # parse runs at load time: no event, and scoped-variables' functions may not be loaded yet,
+        # so do NOT use `scoped` here. plain prefixed local only.
         if expr-3 is not set:
-            set scoped {_script} to ParserInstance.get().getCurrentScript()
+            set {_linesection::script} to ParserInstance.get().getCurrentScript()
         continue
     get:
         # snapshot the caller's locals BEFORE creating any temporaries,
@@ -68,6 +70,7 @@ expression [new] [single] line section %strings%[ with [arg[ument]s [variables]]
         # (right side is evaluated before the variable is set, so the snapshot can't contain itself)
         set scoped {_locals} to SkriptReflection.copyLocals(SkriptReflection.getLocals(event))
 
+        set scoped {_script} to {_linesection::script}
         if scoped {_script} is not set:
             set scoped {_script} to expr-3
 
