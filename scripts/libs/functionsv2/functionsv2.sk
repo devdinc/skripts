@@ -53,7 +53,8 @@ local function blockLines(origin: object) :: strings:
     set {_strip} to length of {_oi} + (4 if {_oi} starts with " " else 1)
     loop walkNodes({_origin}, {_none}):
         set {_line} to "%loop-value.[Node]getIndentation().substring({_strip})%%loop-value.getKey()%"
-        set {_line} to "%{_line}%:" if loop-value is instance of SectionNode
+        if loop-value is instance of SectionNode:
+            set {_line} to "%{_line}%:"
         add {_line} to {_lines::*}
     return {_lines::*}
 
