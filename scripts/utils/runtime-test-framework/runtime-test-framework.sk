@@ -2,17 +2,30 @@ using reflection
 
 import:
     ch.njol.skript.lang.parser.ParserInstance
-    org.bukkit.Bukkit
     ch.njol.skript.test.utils.TestOfflinePlayer
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
     ch.njol.skript.log.SkriptLogger
-    java.lang.Runnable
+    ch.njol.skript.ScriptLoader
 
-local effect sendTestFailMessage %string%[, %-string%]:
-    trigger:
-        set {_msg} to " %expr-2%" if expr-2 is set else ""
-        send "[<gold>Skript<reset>] [&cTEST FAILURE<reset>] %expr-1%%{_msg}%" to console
+options:
+    hidden: f39f0f4a-31ee-4b71-87e9-38ddba3a2313 # id of the hidden bootstrap test
+
+local function testLog(msg: string):
+    send "[<gold>Skript<reset>] %{_msg}%" to console
+
+# reports + records a failure of the test the given event belongs to
+# tags: the effect's parse tags ("5" = no error message)
+local function recordTestFailure(event: object, detail: string, err: string, tags: strings):
+    set {_test} to {_event}.getEventValue("string")
+    set {_script} to {_event}.getEventValue("script")
+    set {_text} to "Test ""%{_test}%""%{_detail}% failed"
+    if {_tags::*} does not contain "5":
+        set {_msg} to " %{_err}%" if {_err} is set else ""
+        testLog("[&cTEST FAILURE<reset>] %{_text}%%{_msg}%")
+        TestTracker.testFailed({_text}, {_script})
+    add "%{_err}%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
+
 
 event "skriptTest":
     pattern: [devdinc] test %string% [when <(.+)>]
@@ -20,15 +33,6 @@ event "skriptTest":
     parse:
         set {_origin} to SkriptLogger.getNode()
         set {_realscript} to script ({_origin}.getConfig().getFileName())
-        # we don't have access to event-string or expr-1, so we can't do it in parse time.
-        # one thing we can do is cause a call to event to register tho.
-        set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-        set {_list::boolean} to false
-        create section with {_proxy} stored in {_functions::run}:
-            wait 2 ticks
-            call custom event "skriptTest" with {_list::*}
-        set {_proxy} to new proxy instance of Runnable using {_functions::*}
-        Bukkit.getGlobalRegionScheduler().execute(instance of plugin "Skript", {_proxy})
         continue
     check:
         set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
@@ -38,77 +42,84 @@ event "skriptTest":
             set {_raw} to first element of regex-1
             if {_raw} is set:
                 set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
-        
             if {_cond} is set:
                 set {_ok} to {_cond}.check(event)
-            continue if {_ok} is true
-            
+            if {_ok} is true:
+                testLog("Running test case %expr-1%")
+                continue
+
 event "beforeSkriptTest":
     pattern: [devdinc] before each test
     event-values: string, boolean, script
     check:
         continue
-        
+
 event "afterSkriptTest":
     pattern: [devdinc] after each test
     event-values: string, boolean, script
     check:
         continue
-        
+
 event "beforeSkriptTestAll":
     pattern: [devdinc] before all tests
     event-values: script
     check:
         continue
-        
+
 event "afterSkriptTestAll":
     pattern: [devdinc] after all tests
     event-values: script
     check:
         continue
 
+before each test:
+    delete {-test.sk::errors::%event-script%.%event-string%::*}
+    set {-test.sk::testblock} to test-block's type
+
+after each test:
+    set test-block to {-test.sk::testblock}
+
+on load:
+    delete {-test.sk::*}
+    wait 1 tick
+    set {_list::string} to "{@hidden}"
+    set {_list::boolean} to false
+    call custom event "skriptTest" with {_list::*}
+    wait 1 tick
+    set {_tests::*} to all tests
+    autorun {_tests::*}
+
 plural expression [all] tests [[with] [test] [name] %-string%] [[with][in] %-script%]:
-    parse:
-        set {_scoped} to false if expr-2 is not set
-        continue
-
     get:
-        if {_scoped} is false:
-            loop {-test.sk::tests::*}:
-                if any:
-                    expr-1 is not set
-                    loop-value[0] is expr-1
-                then:
-                    add loop-value to {_r::*}
-        else:
-            loop {-test.sk::tests::*}:
-                loop-value[1] is expr-2
-                if any:
-                    expr-1 is not set
-                    loop-value[0] is expr-1
-                then:
-                    add loop-value to {_r::*}
-
+        loop {-test.sk::tests::*}:
+            if expr-2 is set:
+                if loop-value[1] is not expr-2:
+                    continue loop
+            if expr-1 is set:
+                if loop-value[0] is not expr-1:
+                    continue loop
+            add loop-value to {_r::*}
         return {_r::*}
-        
+
 effect (1:|2:auto)run %objects%:
     trigger:
         set {_tests::*} to expr-1
         set {_alltests::*} to all tests
         loop {_tests::*}:
             set {_list::script} to loop-value[1]
-            {_scripts::*} does not contain {_list::script}
-            add {_list::script} to {_scripts::*}
-            call custom event "beforeSkriptTestAll" with {_list::*}
+            if {_scripts::*} does not contain {_list::script}:
+                add {_list::script} to {_scripts::*}
+                call custom event "beforeSkriptTestAll" with {_list::*}
         loop {_tests::*}:
             set {_list::string} to loop-value[0]
             set {_list::script} to loop-value[1]
             set {_list::boolean} to true if parse mark is 2 else false
             call custom event "beforeSkriptTest" with {_list::*}
+            TestTracker.testStarted({_list::string})
             call custom event "skriptTest" with {_list::*}
             call custom event "afterSkriptTest" with {_list::*}
             if any:
-                {_list::string} contains "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
+                {_list::string} contains "{@hidden}"
                 size of ({_alltests::*} where ["%input%" is "%loop-value%"]) is 0
             then:
                 add 1 to {_forgottenTestResults}
@@ -119,9 +130,70 @@ effect (1:|2:auto)run %objects%:
             call custom event "afterSkriptTestAll" with {_list::*}
         set {_validTestAmount} to size of {_tests::*} - {_forgottenTestResults}
         if {_validTestAmount} is not 0:
-            send "[<gold>Skript<reset>] <yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed." to console
-        else if size of {_alltests::*} is greater than 0: # skipping if there is no initial hidden test 
-            send "[<gold>Skript<reset>] <yellow>No tests found." to console
+            testLog("<yellow>%{_validTestAmount} - {_testFails}%/%{_validTestAmount}% tests passed.")
+        else if size of {_alltests::*} is greater than 0: # skipping if there is no initial hidden test
+            testLog("<yellow>No tests found.")
+
+# tags: 1 = assert true, 2 = assert false / to fail, 3 = halt on failure, 4 = don't halt, 5 = no error message, 6 = error message
+effect:
+    patterns:
+        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert(1:|1: true|2: false)[ with (6:|5:no )[[error] message][ %-string%]]\: <(.+)>
+        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert <(.+)> (1:|2:to fail)[ with (6:|5:no )[[error][ message]][ %-string%]]
+    usable in:
+        custom event "skriptTest"
+    parse:
+        set {_tf::raw} to first element of regex-1
+        set {_tf::origin} to SkriptLogger.getNode()
+        set {_tf::script} to script ({_tf::origin}.getConfig().getFileName())
+
+        # parse the condition as if inside a skriptTest event of the right script
+        set {_tf::parser} to ParserInstance.get()
+        set {_tf::parser}.[ParserInstance]isActive to true
+        set {_tf::backup} to {_tf::parser}.backup()
+        {_tf::parser}.setCurrentScript({_tf::script})
+        {_tf::parser}.setCurrentEvent("assert condition", (custom event "skriptTest").getClass())
+        set {_tf::cond} to Condition.parse({_tf::raw}, "Can't understand condition: " + {_tf::raw})
+        set {_tf::parser}.[ParserInstance]isActive to false
+        {_tf::parser}.restoreBackup({_tf::backup})
+        continue
+    trigger:
+        set {_tf::ok} to {_tf::cond}.check(event)
+        set {_tf::expected} to true
+        if parse tags contains "2":
+            set {_tf::expected} to false
+        if {_tf::ok} is not {_tf::expected}:
+            set {_tf::label} to "assert true" if parse tags contains "1" else "assert false"
+            recordTestFailure(event, " with condition '%{_tf::label}%: %{_tf::raw}%'", expr-1, parse tags)
+            if parse tags contains "3":
+                delay effect
+
+effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail test[ with (6:|5:no )[[error] message][ %-string%]]:
+    usable in:
+        custom event "skriptTest"
+    trigger:
+        recordTestFailure(event, "", expr-1, parse tags)
+        if parse tags contains "3":
+            delay effect
+
+effect stop auto [test] execution [here]:
+    usable in:
+        custom event "skriptTest"
+    trigger:
+        if event.getEventValue("boolean") is true:
+            delay effect
+
+expression event(-| )test:
+    get:
+        return [event.getEventValue("string"), event.getEventValue("script")]
+
+condition event(-| )test (1:is|2:is not|2:isn't) autorun:
+    check:
+        set {_auto} to event.getEventValue("boolean")
+        if {_auto} is true:
+            if parse mark is 1:
+                continue
+        else if parse mark is 2:
+            continue
 
 condition last test result [of %-object%] is a (1:pass|2:fail):
     usable in:
@@ -134,129 +206,26 @@ condition last test result [of %-object%] is a (1:pass|2:fail):
             set {_test} to expr-1[0]
             set {_script} to expr-1[1]
             stop if size of (all tests where ["%input%" is "%expr-1%"]) is 0
-        if all:
-            parse mark is 1
-            size of {-test.sk::errors::%{_script}%.%{_test}%::*} <= 0
-        then:
-            continue
-        else:
-            if all:
-                parse mark is 2
-                size of {-test.sk::errors::%{_script}%.%{_test}%::*} > 0
-            then:
+        set {_errors} to size of {-test.sk::errors::%{_script}%.%{_test}%::*}
+        if parse mark is 1:
+            if {_errors} <= 0:
                 continue
+        else if {_errors} > 0:
+            continue
 
-before each test:
-    delete {-test.sk::errors::%event-script%.%event-string%::*} 
-    set {-test.sk::testblock} to test-block's type
-    
-after each test:
-    set test-block to {-test.sk::testblock}
-
-on load:
-    delete {-test.sk::*}
-    wait 1 tick
-    set {_list::string} to "f39f0f4a-31ee-4b71-87e9-38ddba3a2313"
-    set {_list::boolean} to false
-    call custom event "skriptTest" with {_list::*}
-    wait 1 tick
-    set {_tests::*} to all tests
-    autorun {_tests::*}
-
-effect:
-    patterns:
-        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert(1:|1: true|2: false)[ with (6:|5:no )[[error] message][ %-string%]]\: <(.+)>
-        (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) assert <(.+)> (1:|2:to fail)[ with (6:|5:no )[[error][ message]][ %-string%]]
-    usable in:
-        custom event "skriptTest"
-    parse:
-        set {_raw} to first element of regex-1
-        set {_origin} to SkriptLogger.getNode()
-        set {_currentscript} to script ({_origin}.getConfig().getFileName())
-        
-        set {_parser} to ParserInstance.get()
-        set {_parser}.[ParserInstance]isActive to true
-        set {_backup} to {_parser}.backup()  
-        
-        {_parser}.setCurrentScript({_currentscript})
-        {_parser}.setCurrentEvent("assert condition", (custom event "skriptTest").getClass())
-        
-        set {_cond} to Condition.parse({_raw}, "Can't understand condition: " + {_raw})
-        
-        set {_parser}.[ParserInstance]isActive to false
-        {_parser}.restoreBackup({_backup})  
-        continue
-    trigger:
-        set {_ok} to {_cond}.check(event)
-        
-        set {_label} to "assert true" if parse tags contains "1" else "assert false"
-        set {_test} to event.getEventValue("string")
-        set {_script} to event.getEventValue("script")
-        if all:
-            parse tags contains "1"
-            {_ok} is false
-        then:
-            set {_bool1} to true
-            
-        if all:
-            parse tags contains "2"
-            {_ok} is true
-        then:
-            set {_bool2} to true
-            
-        if any:
-            {_bool1} is true
-            {_bool2} is true
-        then:
-            if parse tags does not contain "5":
-                sendTestFailMessage "Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", expr-1
-                TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", {_script})
-            add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
-            if parse tags contains "3":
-                delay effect
-
-effect (3:|4:(no|without) (halt[ing]|fail[(-| )](safe|fast)|abort[ing])) fail test[ with (6:|5:no )[[error] message][ %-string%]]:
-    usable in: 
-        custom event "skriptTest"
-    trigger:
-        set {_test} to event.getEventValue("string")
-        set {_script} to event.getEventValue("script")
-        if parse tags does not contain "5":
-            sendTestFailMessage "Test ""%{_test}%"" failed", expr-1
-            TestTracker.testFailed("Test ""%{_test}%"" with condition '%{_label}%: %{_raw}%' failed", {_script})
-        add "%expr-1%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
-        if parse tags contains "3":
-            delay effect
-        
-effect stop auto [test] execution [here]:
-    usable in:
-        custom event "skriptTest"
-    trigger:
-        set {_bool} to event.getEventValue("boolean")
-        if {_bool} is true:
-            delay effect
-            
-expression event(-| )test:
-#    usable in:
-#        custom event "skriptTest"
+plural expression test errors[ for %-objects%]:
+    return type: strings
     get:
-        return [event.getEventValue("string"), event.getEventValue("script")]
-        
-condition event(-| )test (1:is|2:is not|2:isn't) autorun:
-    # usable in:
-    #    custom event "skriptTest"
-    check:
-        set {_bool} to event.getEventValue("boolean")
-        if {_bool} is true:
-            parse mark is 1
-            continue
-        else:
-            parse mark is 2
-            continue
-            
-import:
-    ch.njol.skript.ScriptLoader
-            
+        if expr-1 is not set:
+            set {_test} to event.getEventValue("string")
+            set {_script} to event.getEventValue("script")
+            return {-test.sk::errors::%{_script}%.%{_test}%::*}
+        loop ...expr-1:
+            set {_test} to loop-value[0]
+            set {_script} to loop-value[1]
+            add {-test.sk::errors::%{_script}%.%{_test}%::*} to {_r::*}
+        return {_r::*}
+
 condition parse:
     parse:
         set {_parser} to ParserInstance.get()
@@ -270,7 +239,6 @@ condition parse:
         {_parser}.restoreBackup({_parseBackup})
         set {_logger} to SkriptLogger.startRetainingLog()
         ScriptLoader.loadItems({_parseSection})
-        clear {-test.sk::latestLogs::*}
         loop ...{_logger}.getLog():
             add loop-value.getMessage() to {_logs::*}
         set {-test.sk::latestLogs::*} to {_logs::*}
@@ -283,31 +251,16 @@ plural expression (last|latest) parse logs:
     get:
         return {-test.sk::latestLogs::*}
 
-plural expression test errors[ for %-objects%]:
-    return type: strings
-    get:
-        if expr-1 is not set:
-            set {_test} to event.getEventValue("string")
-            set {_script} to event.getEventValue("script")
-            return {-test.sk::errors::%{_script}%.%{_test}%::*}
-        else:
-            loop ...expr-1:
-                set {_test} to loop-value[0]
-                set {_script} to loop-value[1]
-                add {-test.sk::errors::%{_script}%.%{_test}%::*} to {_r::*}
-            return {_r::*}
-
 expression [the] test(-| )world:
     return type: world
     get:
-        set {_world} to Bukkit.getWorld("skripttest")
+        set {_world} to world "skripttest"
         if any:
             {_world} is not set
             {_world} is null
         then:
-            return Bukkit.getWorlds().get(0)
-        else:
-            return {_world}
+            return first element of all worlds
+        return {_world}
 
 expression [the] test(-| )location:
     return type: location
@@ -320,10 +273,8 @@ expression [the] test(-| )block:
         return test-location.getBlock()
     set:
         set block at test-location to change value
-        
+
 expression [the] test(-| )offline[-| ]player:
     return type: offlineplayer
     get:
-        set {_instance} to new TestOfflinePlayer()
-        # TestOfflinePlayer.[TestOfflinePlayer]PLAYER_PROFILE.setProperty(new ProfileProperty("textures", "ewogICJ0aW1lc3RhbXAiIDogMTc0NzQyOTg2MTQwOCwKICAicHJvZmlsZUlkIiA6ICI2OWUzNzAyNjJjN2Q0MjU1YWM3NjliMTNhNWZlOGY3NCIsCiAgInByb2ZpbGVOYW1lIiA6ICJTYWh2ZGUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTE2MGFiZWVhNDI1YzZmODMyYjc0NmE0NTQ0YzVmYjlhOTgxYjAyZTFiZDg1ZmVhNWM3ZWY4MzFiZGM4NzRmMyIKICAgIH0KICB9Cn0="));
-        return {_instance}
+        return new TestOfflinePlayer()
