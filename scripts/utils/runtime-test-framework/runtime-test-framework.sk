@@ -6,7 +6,6 @@ import:
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
     ch.njol.skript.log.SkriptLogger
-    java.lang.Runnable
 
 local effect sendTestFailMessage %string%[, %-string%]:
     trigger:
@@ -31,7 +30,9 @@ event "skriptTest":
         
             if {_cond} is set:
                 set {_ok} to {_cond}.check(event)
-            continue if {_ok} is true
+            if {_ok} is true:
+                send "[<gold>Skript<reset>] Running test case %expr-1%" to console
+                continue 
             
 event "beforeSkriptTest":
     pattern: [devdinc] before each test
