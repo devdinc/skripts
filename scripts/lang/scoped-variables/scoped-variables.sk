@@ -56,7 +56,6 @@ local function scoped_ctx(origin: object, event: object, var: object, script: ob
     set {_ret::2} to "%{_scope}%::%{_name}%%{_suffix}%"
     return {_ret::*}
 
-# the three-way branches below exist to avoid the "variable name starts with an expression" warning
 expression scoped [variable] %$objects% [([with]in|from|by) (1:%-script%|2:current (folder|package))]:
     parse:
         expr-1 is an instance of Variable
@@ -66,64 +65,30 @@ expression scoped [variable] %$objects% [([with]in|from|by) (1:%-script%|2:curre
         continue
 
     get:
+        suppress starting with expression warnings
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            return variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            return variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            return variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        return variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
 
     set:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            set variable "_scoped::%{_sv::ctx::2}%" with custom-event event to change values
-        else if {_sv::ctx::1} is "-":
-            set variable "-scoped::%{_sv::ctx::2}%" with custom-event event to change values
-        else:
-            set variable "scoped::%{_sv::ctx::2}%" with custom-event event to change values
+        set variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event to change values
 
     add:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            add change values to variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            add change values to variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            add change values to variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        add change values to variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
 
     remove:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            remove change values from variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            remove change values from variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            remove change values from variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        remove change values from variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
 
     remove all:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            remove all change values from variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            remove all change values from variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            remove all change values from variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        remove all change values from variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
 
     delete:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            delete variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            delete variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            delete variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        delete variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
 
     reset:
         set {_sv::ctx::*} to scoped_ctx({_sv::origin}, event, {_sv::var}, expr-2, parse mark)
-        if {_sv::ctx::1} is "_":
-            delete variable "_scoped::%{_sv::ctx::2}%" with custom-event event
-        else if {_sv::ctx::1} is "-":
-            delete variable "-scoped::%{_sv::ctx::2}%" with custom-event event
-        else:
-            delete variable "scoped::%{_sv::ctx::2}%" with custom-event event
+        delete variable "%{_sv::ctx::1}%scoped::%{_sv::ctx::2}%" with custom-event event
