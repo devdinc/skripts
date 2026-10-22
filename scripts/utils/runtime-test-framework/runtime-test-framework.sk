@@ -113,7 +113,7 @@ plural expression [all] tests [[with] [test] [name] %-string%] [[with][in] %-scr
             add loop-value to {_r::*}
         return {_r::*}
 
-effect (1:|2:auto)run %objects%:
+effect [devdinc] (1:|2:auto)run %objects%:
     trigger:
         set {_tests::*} to expr-1
         set {_alltests::*} to all tests
@@ -290,3 +290,19 @@ expression [the] test(-| )offline[-| ]player:
     return type: offlineplayer
     get:
         return new TestOfflinePlayer()
+
+command /skripttests [<text>]:
+    permission: skript.test
+    trigger:
+        if arg-1 is set:
+            set {_script} to script arg-1
+            set {_tests::*} to all tests in {_script}
+        else:
+            set {_tests::*} to all tests
+
+        if {_tests::*} is not set:
+            send "&eNo tests found." to sender
+            stop
+
+        devdinc run {_tests::*}
+    
