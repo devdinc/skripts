@@ -1,0 +1,24 @@
+name: minestom tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare scripts
+        run: |
+          mkdir -p tests/0_scripts
+          rsync -av scripts/ tests/0_scripts/
+          mv tests/0_scripts/libs/parser tests/0_scripts/libs/!parser
+          rm tests/0_scripts/utils/runtime-test-framework -rf
+
+      - name: Run Skript tests
+        uses: devdinc/skript-minestom-test-action@main
+        with:
+          test_script_directory: tests
