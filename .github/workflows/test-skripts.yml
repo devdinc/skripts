@@ -75,15 +75,15 @@ jobs:
               assert last parse logs contains "Can't understand this condition/effect: abc"
           EOF
 
-      - name: Run tests
+      - name: Run tests perf
         uses: SkriptLang/skript-test-action@v1.3
         with:
-          skript_repo_url: https://github.com/SkriptLang/Skript.git
+          skript_repo_url: https://github.com/sovdeeth/Skript.git
           # directory where your test scripts are located (relative to repo root)
           test_script_directory: tests
 
           # Skript version or ref (tag, branch, or commit)
-          skript_repo_ref: 2.15.0
+          skript_repo_ref: combined-perf-build
 
           # directory containing addon/plugin jars (relative to repo root)
           extra_plugins_directory: build/libs
