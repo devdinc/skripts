@@ -1,6 +1,6 @@
 import:
     ch.njol.skript.Skript
-    ch.njol.skript.Script
+    org.skriptlang.skript.lang.script.Script
     ch.njol.skript.lang.parser.ParserInstance
     ch.njol.skript.lang.Condition
     ch.njol.skript.log.SkriptLogger
