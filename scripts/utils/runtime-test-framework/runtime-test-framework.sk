@@ -1,6 +1,7 @@
 import:
     ch.njol.skript.Skript
     org.skriptlang.skript.lang.script.Script
+    java.lang.Class as JavaRClass
     ch.njol.skript.lang.parser.ParserInstance
     ch.njol.skript.lang.Condition
     ch.njol.skript.log.SkriptLogger
@@ -24,7 +25,7 @@ local function recordTestFailure(event: object, detail: string, err: string, tag
         set {_msg} to " %{_err}%" if {_err} is set else ""
         testLog("[&cTEST FAILURE<reset>] %{_text}%%{_msg}%")
         if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
-            Class.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testFailed", String.class, Script.class).invoke(null, {_text}, {_script})
+            JavaRClass.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testFailed", String.class, Script.class).invoke(null, {_text}, {_script})
     add "%{_err}%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
 
 
@@ -123,7 +124,7 @@ effect [devdinc] (1:|2:auto)run %objects%:
             set {_list::boolean} to true if parse mark is 2 else false
             call custom event "beforeSkriptTest" with {_list::*}
             if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
-                Class.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testStarted", String.class).invoke(null, {_list::string})
+                JavaRClass.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testStarted", String.class).invoke(null, {_list::string})
             call custom event "skriptTest" with {_list::*}
             call custom event "afterSkriptTest" with {_list::*}
             if any:
