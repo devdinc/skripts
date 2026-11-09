@@ -17,6 +17,7 @@ jobs:
           rsync -av scripts/ tests/0_scripts/
           mv tests/0_scripts/libs/parser tests/0_scripts/libs/!parser
           rm tests/0_scripts/utils/runtime-test-framework -rf
+          mv tests/0_scripts/utils/world-properties tests/0_scripts/utils/-world-properties
 
       - name: Run Skript tests
         uses: devdinc/skript-minestom-test-action@main
