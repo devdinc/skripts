@@ -1,32 +1,12 @@
 import:
     ch.njol.skript.Skript
+    ch.njol.skript.Script
     ch.njol.skript.lang.parser.ParserInstance
     ch.njol.skript.lang.Condition
     ch.njol.skript.log.SkriptLogger
     ch.njol.skript.ScriptLoader
     java.lang.Runnable
     org.bukkit.Bukkit
-
-option test tracker class:
-    get:
-        if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
-            return "ch.njol.skript.test.runner.TestTracker"
-        return "java.lang.String"
-
-option test tracker started:
-    get:
-        if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
-            return "TestTracker.testStarted({_list::string})"
-        return ""
-
-option test tracker failed:
-    get:
-        if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
-            return "TestTracker.testFailed({_text}, {_script})"
-        return ""
-
-import:
-    {@test tracker class} as TestTracker
 
 options:
     hidden: f39f0f4a-31ee-4b71-87e9-38ddba3a2313 # id of the hidden bootstrap test
@@ -43,7 +23,8 @@ local function recordTestFailure(event: object, detail: string, err: string, tag
     if {_tags::*} does not contain "5":
         set {_msg} to " %{_err}%" if {_err} is set else ""
         testLog("[&cTEST FAILURE<reset>] %{_text}%%{_msg}%")
-        {@test tracker failed}
+        if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
+            Class.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testFailed", String.class, Script.class).invoke(null, {_text}, {_script})
     add "%{_err}%" to {-test.sk::errors::%{_script}%.%{_test}%::*}
 
 
@@ -141,7 +122,8 @@ effect [devdinc] (1:|2:auto)run %objects%:
             set {_list::script} to loop-value[1]
             set {_list::boolean} to true if parse mark is 2 else false
             call custom event "beforeSkriptTest" with {_list::*}
-            {@test tracker started}
+            if Skript.classExists("ch.njol.skript.test.runner.TestTracker"):
+                Class.forName("ch.njol.skript.test.runner.TestTracker").getMethod("testStarted", String.class).invoke(null, {_list::string})
             call custom event "skriptTest" with {_list::*}
             call custom event "afterSkriptTest" with {_list::*}
             if any:
