@@ -7,7 +7,6 @@ import:
     ch.njol.skript.log.SkriptLogger
     ch.njol.skript.ScriptLoader
     java.lang.Runnable
-    org.bukkit.Bukkit
 
 options:
     hidden: f39f0f4a-31ee-4b71-87e9-38ddba3a2313 # id of the hidden bootstrap test
@@ -44,7 +43,7 @@ event "skriptTest":
             wait 2 ticks
             call custom event "skriptTest" with {_list::*}
         set {_proxy} to new proxy instance of Runnable using {_functions::*}
-        Bukkit.getGlobalRegionScheduler().execute(instance of plugin "Skript", {_proxy})
+        {_proxy}.run()
         continue
     check:
         set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
