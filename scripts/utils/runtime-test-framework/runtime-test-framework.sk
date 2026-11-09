@@ -1,8 +1,5 @@
-using reflection
-
 import:
     ch.njol.skript.lang.parser.ParserInstance
-    ch.njol.skript.test.utils.TestOfflinePlayer
     ch.njol.skript.lang.Condition
     ch.njol.skript.test.runner.TestTracker
     ch.njol.skript.log.SkriptLogger
@@ -86,10 +83,6 @@ event "afterSkriptTestAll":
 
 before each test:
     delete {-test.sk::errors::%event-script%.%event-string%::*}
-    set {-test.sk::testblock} to test-block's type
-
-after each test:
-    set test-block to {-test.sk::testblock}
 
 on load:
     delete {-test.sk::*}
@@ -263,46 +256,3 @@ plural expression (last|latest) parse logs:
     get:
         return {-test.sk::latestLogs::*}
 
-expression [the] test(-| )world:
-    return type: world
-    get:
-        set {_world} to world "skripttest"
-        if any:
-            {_world} is not set
-            {_world} is null
-        then:
-            return first element of all worlds
-        return {_world}
-
-expression [the] test(-| )location:
-    return type: location
-    get:
-        return test-world.getSpawnLocation().add(10, 1, 0)
-
-expression [the] test(-| )block:
-    return type: block
-    get:
-        return test-location.getBlock()
-    set:
-        set block at test-location to change value
-
-expression [the] test(-| )offline[-| ]player:
-    return type: offlineplayer
-    get:
-        return new TestOfflinePlayer()
-
-command /skripttests [<text>]:
-    permission: skript.test
-    trigger:
-        if arg-1 is set:
-            set {_script} to script arg-1
-            set {_tests::*} to all tests in {_script}
-        else:
-            set {_tests::*} to all tests
-
-        if {_tests::*} is not set:
-            send "&eNo tests found." to sender
-            stop
-
-        devdinc run {_tests::*}
-    
