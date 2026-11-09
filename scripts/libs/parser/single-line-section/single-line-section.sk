@@ -45,7 +45,6 @@ local function compileLine(code: string, event: object, script: script) :: objec
     set {_wasActive} to {_parser}.[ParserInstance]isActive
     set {_parser}.[ParserInstance]isActive to true
     set {_backup} to {_parser}.backup()
-    {_parser}.reset()
     {_parser}.setCurrentScript({_script})
     {_parser}.setCurrentEvent("section", SectionEvent.class)
     {_parser}.setCurrentStructure({_event})
