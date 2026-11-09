@@ -22,3 +22,4 @@ jobs:
         uses: devdinc/skript-minestom-test-action@main
         with:
           test_script_directory: tests
+          test_framework_url: https://raw.githubusercontent.com/devdinc/skripts/minestomrework/scripts/utils/runtime-test-framework/runtime-test-framework.sk
