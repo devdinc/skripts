@@ -34,6 +34,7 @@ event "skriptTest":
     parse:
         set {_origin} to SkriptLogger.getNode()
         set {_realscript} to script ({_origin}.getConfig().getFileName())
+        continue
 
         # we don't have access to event-string or expr-1, so we can't run it in parse time.
         # one thing we can do is cause a call to event to register tho.
@@ -44,7 +45,6 @@ event "skriptTest":
             call custom event "skriptTest" with {_list::*}
         set {_proxy} to new proxy instance of Runnable using {_functions::*}
         {_proxy}.run()
-        continue
     check:
         set {_realscript} to current script if {_realscript} is not set # before skript-reflect 2.6.4, parse section in events within same script doesn't run
         set {_ok} to true
