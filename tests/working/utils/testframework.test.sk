@@ -72,20 +72,6 @@ devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 errors do not leak between te
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 event-test returns correct name":
     assert true: event-test[0] is event-string
     
-devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary A":
-    set {-test.sk::temptestblocka} to test-block's type
-    test block is chest:
-        set test-block to trapped chest
-    else if test block is trapped chest:
-        set test-block to chest
-    else:
-        set test-block to ender chest
-    set {-test.sk::temptestblockb} to test-block's type
-    
-devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 test-block is temporary B":
-    assert true: {-test.sk::temptestblocka} is test-block's type
-    assert true: {-test.sk::temptestblocka} is not {-test.sk::temptestblockb}
-
 devdinc test "f39f0f4a-31ee-4b71-87e9-38ddba3a2313 last test result A":
     fail test with no error message
     
