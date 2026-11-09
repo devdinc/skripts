@@ -104,11 +104,11 @@ The framework is built around the following principles:
 
 1. **Tests are custom events** (`skriptTest`)
 2. **Tests are registered at parse time**
-3. **Execution is scheduled, not inline** (scheduler + proxy Runnable)
+3. **Registration uses a proxy Runnable** to trigger the hidden registration event
 4. **Each test is scoped to its source script**
 5. **Failures are tracked per test, per script**
 
-Execution is fully event-driven and never relies on direct control flow from the script loader.
+The parse handler invokes the proxy's `run()` method. The proxy section waits two ticks before firing the hidden registration event, allowing the test definition to be registered as the script is loaded.
 
 ---
 
@@ -431,40 +431,15 @@ last parse logs
 
 ---
 
-## Native TestTracker Integration (Experimental)
+## Native TestTracker Integration (Optional)
 
-Failures are forwarded to Skript’s internal `TestTracker`.
-
-### Implications
-
-* Native reporting tools can observe results
-* CI-style environments can consume output
+When Skript's internal `ch.njol.skript.test.runner.TestTracker` class is available, the framework attempts to forward test-start and test-failure notifications to it through reflection.
 
 ### Limitations
 
-* Experimental and version-dependent
-* No compatibility guarantees
-
-You **must** use:
-
-```skript
-devdinc test "<name>"
-```
-
-Native `test` syntax is not supported.
-
----
-
-## Test Environment Utilities
-
-The framework provides controlled fixtures:
-
-* `test-world` – `skripttest` or fallback world
-* `test-location` – fixed offset location
-* `test-block` – temporary block (auto-restored)
-* `test-offline-player` – generated offline player
-
-These utilities guarantee cleanup after each test.
+* The integration is optional; environments without `TestTracker` skip forwarding.
+* It depends on the internal class and method signatures and is therefore version-dependent.
+* This integration does not replace the framework's own test registration, execution, or error tracking.
 
 ---
 
@@ -521,7 +496,7 @@ The following must not be relied upon:
 
 * Sentinel test mechanics
 * Internal variable layout
-* Scheduler timing assumptions
+* Proxy registration timing
 * Reflection internals
 
 These may change without notice.

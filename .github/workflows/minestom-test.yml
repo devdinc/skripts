@@ -17,8 +17,10 @@ jobs:
           rsync -av scripts/ tests/0_scripts/
           mv tests/0_scripts/libs/parser tests/0_scripts/libs/!parser
           rm tests/0_scripts/utils/runtime-test-framework -rf
+          mv tests/0_scripts/utils/world-properties tests/0_scripts/utils/-world-properties
 
       - name: Run Skript tests
         uses: devdinc/skript-minestom-test-action@main
         with:
           test_script_directory: tests
+          test_framework_url: https://raw.githubusercontent.com/devdinc/skripts/minestomrework/scripts/utils/runtime-test-framework/runtime-test-framework.sk
