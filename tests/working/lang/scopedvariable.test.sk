@@ -23,7 +23,7 @@ test "scoped variable - remove":
 test "scoped variable - remove all":
     set scoped {-removeall::*} to "a", "b", "b", "c"
     remove all "b" from scoped {-removeall::*}
-    assert scoped {-removeall::*} is "a", "c"
+    assert scoped {-removeall::*} is "a", "c" with "%scoped {-removeall::*}%"
 
 test "scoped variable - delete":
     set scoped {-deletetest} to 42
