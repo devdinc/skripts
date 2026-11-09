@@ -248,7 +248,7 @@ condition parse:
             add loop-value.getMessage() to {_logs::*}
         set {-test.sk::latestLogs::*} to {_logs::*}
         {_logger}.close()
-        {_parser}.reset()
+        {_parser}.restoreBackup({_parseBackup})
 
 plural expression (last|latest) parse logs:
     usable in:
