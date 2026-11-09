@@ -1,42 +1,28 @@
-# Skripts
+# Skripts (Archived)
 
-Personal Skript files created for various purposes.
+This repository has been split into separate repositories. **Development and documentation now live in the individual projects below.** This repository is no longer maintained.
 
-You can use [pacskages](https://github.com/miberrs/pacskage) to install them.
-e.g: 
+## Packages
 
-`package install https://github.com/devdinc/skripts/#scripts/libs/functionsv2`
+- [Event-specified Variables](https://github.com/devdinc/event-specified-variables) — access variables in a selected event context.
+- [Repeat Effect](https://github.com/devdinc/repeat-effect) — execute an effect a specified number of times.
+- [Scoped Variables](https://github.com/devdinc/scoped-variables) — scope variables by script, folder, or package.
+- [Single-line Multiconditional](https://github.com/devdinc/singleline-multiconditional) — combine conditions with `&&` and `||`.
+- [Functions v2](https://github.com/devdinc/functionsv2) — create and invoke Java functional-interface lambdas from Skript.
+- [Single-line Section](https://github.com/devdinc/single-line-section) — compile a line of Skript into a section.
+- [Runtime Test Framework](https://github.com/devdinc/runtime-test-framework) — define and execute Skript tests at runtime.
+- [World Properties](https://github.com/devdinc/world-properties) — load world settings from `world.properties` files.
 
-## Documentation
+## Installation
 
-All documentation, setup instructions, and usage examples are maintained in the project [wiki](https://github.com/devdinc/skripts/wiki).
+Install each package from its own repository URL. For example:
 
-For technical details [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/devdinc/skripts)
+```skript
+package install https://github.com/devdinc/functionsv2
+```
 
-## Purpose
+See the README in each package repository for requirements, dependencies, syntax, and examples.
 
-The wiki includes:
-- Installation and configuration instructions
-- Skript usage examples
-- Architecture and design notes
-- Troubleshooting and FAQs
+## Legacy repository
 
-## Contributing
-
-Most scripts in this repository are developed primarily for personal use and are provided as-is. Contributions and feedback are welcome.
-
-Please note:
-- Not all pull requests will be accepted, as changes must align with the project’s direction and use cases.
-- Moderately significant bug fixes or meaningful improvements are very likely to be accepted.
-- Smaller stylistic or opinion-based changes may be declined.
-
-If you are unsure whether a proposed change would be implemented, please create an issue before submitting a pull request.
-
-## Common Issues
-
-### Load Order
-
-If you encounter errors such as `Can't understand this expression`, the issue is most likely related to load order.
-
-Skript loads files alphabetically, with folders being prioritized. To control load order, prefix the Skript file with a folder or a character such as `0_` or `!`
-(e.g., `!testframework.sk`)
+The original collection and its historical files remain here for reference only. Use the individual repositories above for current versions, issues, and contributions.
